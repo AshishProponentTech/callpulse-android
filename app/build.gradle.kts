@@ -72,9 +72,22 @@ android {
             dimension = "env"
             applicationIdSuffix = ".staging"
             versionNameSuffix = "-staging"
-            // The LAN address of the development machine. See DEVIATIONS.md D-005 - this is
-            // also the only flavor permitted to speak cleartext HTTP.
-            buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.20:8000/api/v1/\"")
+
+            /*
+             * 10.0.2.2 is the emulator's alias for the host machine's loopback, so an emulator
+             * build reaches Laravel without touching the LAN interface - and therefore without
+             * needing a Windows Firewall rule at all.
+             *
+             * A real phone cannot resolve 10.0.2.2; it needs the host's LAN address instead.
+             * Override without editing this file:
+             *     ./gradlew assembleStagingDebug -PcallpulseApiBase=http://192.168.1.20:8000/api/v1/
+             *
+             * See DEVIATIONS.md D-005 - staging is the only flavor permitted cleartext HTTP,
+             * and network_security_config restricts even that to these specific hosts.
+             */
+            val apiBase = providers.gradleProperty("callpulseApiBase")
+                .getOrElse("http://10.0.2.2:8000/api/v1/")
+            buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
         }
         create("production") {
             dimension = "env"
