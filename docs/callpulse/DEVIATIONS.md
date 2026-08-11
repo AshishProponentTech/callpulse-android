@@ -147,6 +147,36 @@ decision #9's JDK 17 bytecode target is honoured. Verified: both build variants 
 
 ---
 
+## D-015 — The API 36 emulator image crashes under swiftshader_indirect
+
+**Status:** RULED · Stage G · environment note, not a code change
+
+**Symptom.** With `hw.gpu.mode=swiftshader_indirect`, the app dies on launch with a native
+`SIGABRT` on the `RenderThread`:
+
+```
+F libc : Fatal signal 6 (SIGABRT), code -6 (SI_TKILL) in tid (RenderThread)
+F DEBUG: android::Choreographer::registerRefreshRateCallback
+        art::ScopedCheck::CheckFieldAccess ... android::ibinderForJavaObject
+```
+
+No Kotlin stack trace and no `FATAL EXCEPTION` — the abort is inside `libhwui`/`libgui`, in a
+CheckJNI field-access assertion. **This is not application code.**
+
+**Ruling.** Run the emulator with `-gpu host`. Verified: same APK, same AVD, launches and runs
+correctly. Recorded because it will otherwise be mistaken for an app crash during Stage O QA,
+and because a `RenderThread` SIGABRT looks alarming enough to send someone hunting through
+Compose code for a bug that is not there.
+
+```
+emulator -avd callpulse_api36 -gpu host -no-snapshot -no-boot-anim
+```
+
+A "System UI isn't responding" ANR may also appear on first boot. That is the emulator's own
+SystemUI process under load, not CallPulse; dismiss with Wait.
+
+---
+
 ## D-005 — Testing over plain HTTP on the LAN
 
 **Status:** OPEN · resolve at Stage F/N
