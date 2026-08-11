@@ -1,0 +1,20 @@
+# Build output — `build/` (not `/build`) so it matches every module, not just the root.
+build/
+.gradle/
+.cxx/
+.externalNativeBuild/
+/captures
+
+# IDE
+*.iml
+.idea/
+.DS_Store
+
+# Machine-specific: contains the absolute SDK path.
+local.properties
+
+# §2 / §18.1 — never commit the keystore or any credential.
+*.jks
+*.keystore
+keystore.properties
+signing.properties
