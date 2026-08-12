@@ -3,6 +3,7 @@ package com.proponenttech.callpulse.feature.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.proponenttech.callpulse.core.data.session.SessionRepository
+import com.proponenttech.callpulse.core.network.ApiConfig
 import com.proponenttech.callpulse.core.network.ApiResult
 import com.proponenttech.callpulse.core.network.dto.ProjectDto
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,11 +19,15 @@ data class LoginUiState(
     val email: String = "",
     val password: String = "",
     val isSubmitting: Boolean = false,
+    /** What the app is currently doing, so a slow network never looks like a frozen screen. */
+    val progressLabel: String? = null,
     val error: String? = null,
     val signedIn: Boolean = false,
     val projects: List<ProjectDto> = emptyList(),
     val workdaySeconds: Int = 28800,
     val consentAccepted: Boolean = false,
+    /** Debug builds only — shows which server is being contacted. */
+    val serverUrl: String? = null,
 ) {
     val canSubmit: Boolean get() = email.isNotBlank() && password.isNotBlank() && !isSubmitting
 }
@@ -30,9 +35,12 @@ data class LoginUiState(
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val session: SessionRepository,
+    private val config: ApiConfig,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(LoginUiState())
+    private val _state = MutableStateFlow(
+        LoginUiState(serverUrl = if (config.isDebug) config.baseUrl else null),
+    )
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
     fun onEmailChange(value: String) = _state.update { it.copy(email = value, error = null) }
@@ -43,24 +51,32 @@ class LoginViewModel @Inject constructor(
         val current = _state.value
         if (!current.canSubmit) return
 
-        _state.update { it.copy(isSubmitting = true, error = null) }
+        _state.update {
+            it.copy(isSubmitting = true, error = null, progressLabel = "Signing in…")
+        }
 
         viewModelScope.launch {
             when (val result = session.login(current.email.trim(), current.password)) {
                 is ApiResult.Success -> loadBootstrap()
-                else -> _state.update { it.copy(isSubmitting = false, error = result.toMessage()) }
+                else -> _state.update {
+                    it.copy(isSubmitting = false, progressLabel = null, error = result.toMessage())
+                }
             }
         }
     }
 
     /** §11.1 — login is not complete until bootstrap has cached the config the app needs. */
     private suspend fun loadBootstrap() {
+        // A second round trip follows the login, so say so rather than sitting on "Signing in".
+        _state.update { it.copy(progressLabel = "Loading your projects…") }
+
         when (val result = session.bootstrap()) {
             is ApiResult.Success -> {
                 val data = result.value
                 _state.update {
                     it.copy(
                         isSubmitting = false,
+                        progressLabel = null,
                         signedIn = true,
                         projects = data.projects,
                         workdaySeconds = data.workdaySeconds,
@@ -72,7 +88,9 @@ class LoginViewModel @Inject constructor(
 
             else -> {
                 Timber.w("Bootstrap failed after a successful login")
-                _state.update { it.copy(isSubmitting = false, error = result.toMessage()) }
+                _state.update {
+                    it.copy(isSubmitting = false, progressLabel = null, error = result.toMessage())
+                }
             }
         }
     }
