@@ -1,0 +1,237 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "4930a95422df06efc5dda9bf75129ab3",
+    "entities": [
+      {
+        "tableName": "call_drafts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `clientUuid` TEXT NOT NULL, `serverId` INTEGER, `projectId` INTEGER, `taskId` INTEGER, `milestoneId` INTEGER, `phoneE164` TEXT, `phoneDisplay` TEXT, `contactName` TEXT, `direction` TEXT NOT NULL, `channel` TEXT NOT NULL, `subChannel` TEXT, `startedAtMillis` INTEGER NOT NULL, `endedAtMillis` INTEGER, `tzOffsetMinutes` INTEGER NOT NULL, `durationSec` INTEGER NOT NULL, `ringSec` INTEGER, `answered` INTEGER NOT NULL, `isPersonal` INTEGER NOT NULL, `confidence` TEXT NOT NULL, `source` TEXT NOT NULL, `deviceUuid` TEXT, `androidCallLogId` TEXT, `phoneAccountId` TEXT, `outcome` TEXT, `notes` TEXT, `appVersion` TEXT, `capturedAtMillis` INTEGER NOT NULL, `reviewedAtMillis` INTEGER, `syncStatus` TEXT NOT NULL, `syncError` TEXT, `syncAttempts` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clientUuid",
+            "columnName": "clientUuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "projectId",
+            "columnName": "projectId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "taskId",
+            "columnName": "taskId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "milestoneId",
+            "columnName": "milestoneId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "phoneE164",
+            "columnName": "phoneE164",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "phoneDisplay",
+            "columnName": "phoneDisplay",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contactName",
+            "columnName": "contactName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "direction",
+            "columnName": "direction",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel",
+            "columnName": "channel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subChannel",
+            "columnName": "subChannel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "startedAtMillis",
+            "columnName": "startedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAtMillis",
+            "columnName": "endedAtMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "tzOffsetMinutes",
+            "columnName": "tzOffsetMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationSec",
+            "columnName": "durationSec",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ringSec",
+            "columnName": "ringSec",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "answered",
+            "columnName": "answered",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isPersonal",
+            "columnName": "isPersonal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "confidence",
+            "columnName": "confidence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceUuid",
+            "columnName": "deviceUuid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "androidCallLogId",
+            "columnName": "androidCallLogId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "phoneAccountId",
+            "columnName": "phoneAccountId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "outcome",
+            "columnName": "outcome",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "appVersion",
+            "columnName": "appVersion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "capturedAtMillis",
+            "columnName": "capturedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewedAtMillis",
+            "columnName": "reviewedAtMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "syncStatus",
+            "columnName": "syncStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncError",
+            "columnName": "syncError",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "syncAttempts",
+            "columnName": "syncAttempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_call_drafts_clientUuid",
+            "unique": true,
+            "columnNames": [
+              "clientUuid"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_call_drafts_clientUuid` ON `${TABLE_NAME}` (`clientUuid`)"
+          },
+          {
+            "name": "index_call_drafts_androidCallLogId",
+            "unique": false,
+            "columnNames": [
+              "androidCallLogId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_call_drafts_androidCallLogId` ON `${TABLE_NAME}` (`androidCallLogId`)"
+          },
+          {
+            "name": "index_call_drafts_startedAtMillis",
+            "unique": false,
+            "columnNames": [
+              "startedAtMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_call_drafts_startedAtMillis` ON `${TABLE_NAME}` (`startedAtMillis`)"
+          },
+          {
+            "name": "index_call_drafts_syncStatus",
+            "unique": false,
+            "columnNames": [
+              "syncStatus"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_call_drafts_syncStatus` ON `${TABLE_NAME}` (`syncStatus`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4930a95422df06efc5dda9bf75129ab3')"
+    ]
+  }
+}

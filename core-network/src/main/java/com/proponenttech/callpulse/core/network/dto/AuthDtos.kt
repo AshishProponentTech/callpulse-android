@@ -95,3 +95,89 @@ data class ApiErrorDto(
     val code: String? = null,
     val errors: Map<String, List<String>>? = null,
 )
+
+// ---- devices (§21) ---------------------------------------------------------------------------
+
+@Serializable
+data class ConsentRequest(
+    @SerialName("device_uuid") val deviceUuid: String,
+    @SerialName("consent_version") val consentVersion: String,
+    @SerialName("accepted_at") val acceptedAt: String? = null,
+)
+
+@Serializable
+data class HeartbeatRequest(
+    @SerialName("device_uuid") val deviceUuid: String,
+    @SerialName("app_version") val appVersion: String? = null,
+    @SerialName("app_version_code") val appVersionCode: Int? = null,
+    @SerialName("os_version") val osVersion: String? = null,
+    @SerialName("sdk_int") val sdkInt: Int? = null,
+    val manufacturer: String? = null,
+    val model: String? = null,
+    @SerialName("call_log_permission") val callLogPermission: Boolean,
+    @SerialName("phone_state_permission") val phoneStatePermission: Boolean,
+    @SerialName("contacts_permission") val contactsPermission: Boolean,
+    @SerialName("notification_permission") val notificationPermission: Boolean,
+    @SerialName("whatsapp_assist_enabled") val whatsappAssistEnabled: Boolean = false,
+    @SerialName("battery_optimization_ignored") val batteryOptimizationIgnored: Boolean? = null,
+    @SerialName("last_scan_at") val lastScanAt: String? = null,
+    @SerialName("last_call_captured_at") val lastCallCapturedAt: String? = null,
+    @SerialName("pending_sync_count") val pendingSyncCount: Int? = null,
+)
+
+@Serializable
+data class DeviceStateDto(
+    @SerialName("device_uuid") val deviceUuid: String? = null,
+    val revoked: Boolean = false,
+    @SerialName("consent_version") val consentVersion: String? = null,
+    @SerialName("consent_accepted_at") val consentAcceptedAt: String? = null,
+    @SerialName("min_supported_version_code") val minSupportedVersionCode: Int = 1,
+)
+
+// ---- call session ingest (§21) ---------------------------------------------------------------
+
+@Serializable
+data class CallSessionPayload(
+    @SerialName("client_uuid") val clientUuid: String,
+    @SerialName("device_uuid") val deviceUuid: String,
+    @SerialName("project_id") val projectId: Long,
+    @SerialName("task_id") val taskId: Long? = null,
+    @SerialName("milestone_id") val milestoneId: Long? = null,
+    @SerialName("phone_e164") val phoneE164: String? = null,
+    @SerialName("phone_display") val phoneDisplay: String? = null,
+    @SerialName("contact_name") val contactName: String? = null,
+    val direction: String,
+    val channel: String,
+    @SerialName("sub_channel") val subChannel: String? = null,
+    @SerialName("started_at") val startedAt: String,
+    @SerialName("ended_at") val endedAt: String? = null,
+    @SerialName("tz_offset_minutes") val tzOffsetMinutes: Int,
+    @SerialName("duration_sec") val durationSec: Int,
+    @SerialName("ring_sec") val ringSec: Int? = null,
+    val answered: Boolean,
+    @SerialName("is_personal") val isPersonal: Boolean = false,
+    val confidence: String,
+    val source: String,
+    @SerialName("android_call_log_id") val androidCallLogId: String? = null,
+    @SerialName("phone_account_id") val phoneAccountId: String? = null,
+    val outcome: String? = null,
+    val notes: String? = null,
+    @SerialName("app_version") val appVersion: String? = null,
+    @SerialName("captured_at") val capturedAt: String? = null,
+    @SerialName("reviewed_at") val reviewedAt: String? = null,
+)
+
+@Serializable
+data class BatchRequest(val sessions: List<CallSessionPayload>)
+
+/** §6.2.8 — HTTP 200 with a per-row status, so one bad row cannot lose the rest. */
+@Serializable
+data class BatchRowResult(
+    @SerialName("client_uuid") val clientUuid: String,
+    val status: String,
+    val id: Long? = null,
+    val errors: Map<String, List<String>>? = null,
+)
+
+@Serializable
+data class BatchResponse(val results: List<BatchRowResult>)

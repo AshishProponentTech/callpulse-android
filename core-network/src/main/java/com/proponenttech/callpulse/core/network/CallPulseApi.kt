@@ -3,6 +3,11 @@ package com.proponenttech.callpulse.core.network
 import com.proponenttech.callpulse.core.network.dto.ApiEnvelope
 import com.proponenttech.callpulse.core.network.dto.BootstrapResponse
 import com.proponenttech.callpulse.core.network.dto.LoginRequest
+import com.proponenttech.callpulse.core.network.dto.BatchRequest
+import com.proponenttech.callpulse.core.network.dto.BatchResponse
+import com.proponenttech.callpulse.core.network.dto.ConsentRequest
+import com.proponenttech.callpulse.core.network.dto.DeviceStateDto
+import com.proponenttech.callpulse.core.network.dto.HeartbeatRequest
 import com.proponenttech.callpulse.core.network.dto.LoginResponse
 import retrofit2.Response
 import retrofit2.http.Body
@@ -33,4 +38,16 @@ interface CallPulseApi {
     suspend fun bootstrap(
         @Query("device_uuid") deviceUuid: String,
     ): Response<ApiEnvelope<BootstrapResponse>>
+
+    /** Decision #14 — consent is a stored, versioned record; ingest is refused without it. */
+    @POST("devices/consent")
+    suspend fun recordConsent(@Body body: ConsentRequest): Response<ApiEnvelope<DeviceStateDto>>
+
+    /** §12.1 — how a manager sees a permission was turned off, without the app nagging. */
+    @POST("devices/heartbeat")
+    suspend fun heartbeat(@Body body: HeartbeatRequest): Response<ApiEnvelope<DeviceStateDto>>
+
+    /** §6.2.8 — always HTTP 200 with a per-row status array. */
+    @POST("call-sessions/batch")
+    suspend fun ingestBatch(@Body body: BatchRequest): Response<ApiEnvelope<BatchResponse>>
 }

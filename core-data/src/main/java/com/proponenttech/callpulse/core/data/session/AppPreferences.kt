@@ -50,6 +50,31 @@ class AppPreferences @Inject constructor(
         context.dataStore.edit { it[KEY_PROJECTS_JSON] = json }
     }
 
+    // ---- capture watermark (§13.2) --------------------------------------------------------
+
+    /**
+     * Epoch millis of the newest CallLog row already processed. Every scan reads rows NEWER
+     * than this, oldest first, so rapid back-to-back calls and post-reboot backfill both work.
+     * Zero means "never scanned" and triggers the first-run backfill.
+     */
+    val callLogWatermark: Flow<Long> = context.dataStore.data
+        .map { it[KEY_CALL_LOG_WATERMARK] ?: 0L }
+
+    suspend fun setCallLogWatermark(millis: Long) {
+        context.dataStore.edit { prefs ->
+            // Never move the watermark backwards; a stale scan must not replay old rows.
+            val current = prefs[KEY_CALL_LOG_WATERMARK] ?: 0L
+            if (millis > current) prefs[KEY_CALL_LOG_WATERMARK] = millis
+        }
+    }
+
+    val lastScanAtMillis: Flow<Long> = context.dataStore.data
+        .map { it[KEY_LAST_SCAN_AT] ?: 0L }
+
+    suspend fun setLastScanAt(millis: Long) {
+        context.dataStore.edit { it[KEY_LAST_SCAN_AT] = millis }
+    }
+
     suspend fun setDefaultProjectId(projectId: Long?) {
         context.dataStore.edit { prefs ->
             if (projectId == null) prefs.remove(KEY_DEFAULT_PROJECT_ID)
@@ -89,5 +114,7 @@ class AppPreferences @Inject constructor(
         val KEY_MIN_SUPPORTED_VERSION_CODE: Preferences.Key<Int> =
             intPreferencesKey("min_supported_version_code")
         val KEY_PROJECTS_JSON: Preferences.Key<String> = stringPreferencesKey("projects_json")
+        val KEY_CALL_LOG_WATERMARK: Preferences.Key<Long> = longPreferencesKey("call_log_watermark")
+        val KEY_LAST_SCAN_AT: Preferences.Key<Long> = longPreferencesKey("last_scan_at")
     }
 }

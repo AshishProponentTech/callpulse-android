@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
         Exactly the §12 permission set. No extras.
@@ -28,6 +29,22 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CallPulse"
         android:usesCleartextTraffic="false">
+
+        <!--
+            Hilt supplies the WorkerFactory via Configuration.Provider, so WorkManager must NOT
+            self-initialise through App Startup first - it would build a factory that cannot
+            construct @HiltWorker classes.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
         <activity
             android:name=".MainActivity"
