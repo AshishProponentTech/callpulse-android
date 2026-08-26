@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.proponenttech.callpulse.core.data.db.CallSessionDao
+import com.proponenttech.callpulse.core.data.sync.SyncScheduler
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -25,6 +26,7 @@ class CallLogScanWorker @AssistedInject constructor(
     private val captureRepository: CaptureRepository,
     private val dao: CallSessionDao,
     private val notifier: ReviewNotifier,
+    private val syncScheduler: SyncScheduler,
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
@@ -32,6 +34,14 @@ class CallLogScanWorker @AssistedInject constructor(
             val result = captureRepository.scan()
 
             if (result.created > 0) {
+                /*
+                 * Capture is hands-off: the call reaches the server without the employee opening
+                 * the app or reviewing anything. §13.5 is explicit that an unreviewed call still
+                 * counts, so waiting for a review before syncing would lose data from anyone who
+                 * simply never taps the notification.
+                 */
+                syncScheduler.syncNow()
+
                 val unreviewed = dao.observeUnreviewedCount().first()
                 notifier.notifyCapture(
                     newCount = result.created,

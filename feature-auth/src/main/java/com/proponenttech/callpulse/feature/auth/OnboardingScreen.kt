@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -166,6 +168,54 @@ fun OnboardingRoute(
                 }
             }
 
+            // ---- Step 3: project ------------------------------------------------------------
+            Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("3. Default project", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "Captured calls are logged against this project automatically, " +
+                            "with no action from you. You can change it any time; it only " +
+                            "affects calls made afterwards.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+                    )
+
+                    if (state.projects.isEmpty()) {
+                        Text(
+                            "No projects available for your account.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+
+                    state.projects.forEach { project ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.selectProject(project.id) }
+                                .padding(vertical = 4.dp),
+                        ) {
+                            RadioButton(
+                                selected = state.selectedProjectId == project.id,
+                                onClick = { viewModel.selectProject(project.id) },
+                            )
+                            Column {
+                                Text(project.name, style = MaterialTheme.typography.bodyMedium)
+                                project.clientName?.let {
+                                    Text(
+                                        it,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Button(
                 onClick = onReady,
                 enabled = state.captureReady,
@@ -173,7 +223,13 @@ fun OnboardingRoute(
                     .fillMaxWidth()
                     .padding(top = 24.dp),
             ) {
-                Text(if (state.captureReady) "Start tracking calls" else "Complete the steps above")
+                Text(
+                    if (state.captureReady) {
+                        "Start tracking calls automatically"
+                    } else {
+                        "Complete the steps above"
+                    },
+                )
             }
         }
     }

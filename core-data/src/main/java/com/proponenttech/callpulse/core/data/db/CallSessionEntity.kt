@@ -14,7 +14,13 @@ import androidx.room.PrimaryKey
     tableName = "call_drafts",
     indices = [
         Index(value = ["clientUuid"], unique = true),
-        Index(value = ["androidCallLogId"]),
+        /*
+         * UNIQUE, not merely indexed. Check-then-insert loses to a race: the post-call scan and
+         * the periodic reconcile can both read the same CallLog row before either has written
+         * it, and both then insert. Observed in testing — three calls became six drafts.
+         * SQLite permits many NULLs in a unique index, so manual entries are unaffected.
+         */
+        Index(value = ["androidCallLogId"], unique = true),
         Index(value = ["startedAtMillis"]),
         Index(value = ["syncStatus"]),
     ],

@@ -6,6 +6,8 @@ import com.proponenttech.callpulse.core.data.db.SyncStatus
 import com.proponenttech.callpulse.core.data.session.AppPreferences
 import com.proponenttech.callpulse.core.data.session.SecureStore
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import java.util.TimeZone
 import java.util.UUID
@@ -26,6 +28,8 @@ class CaptureRepository @Inject constructor(
     private val secureStore: SecureStore,
 ) {
 
+    private val scanMutex = Mutex()
+
     data class ScanResult(
         val created: Int,
         val skipped: Int,
@@ -41,7 +45,13 @@ class CaptureRepository @Inject constructor(
      * days anyway (§6.2), and importing a year of personal calls would be a privacy problem in
      * its own right.
      */
-    suspend fun scan(nowMillis: Long = System.currentTimeMillis()): ScanResult {
+    suspend fun scan(nowMillis: Long = System.currentTimeMillis()): ScanResult =
+        // Four mechanisms can trigger a scan and several may fire at once — a call ending while
+        // the app is foregrounded triggers both. Serialising them keeps the unique index from
+        // having to be the last line of defence, and stops two scans doing the same work twice.
+        scanMutex.withLock { scanLocked(nowMillis) }
+
+    private suspend fun scanLocked(nowMillis: Long): ScanResult {
         val stored = preferences.callLogWatermark.first()
         val watermark = if (stored == 0L) {
             val backfillFrom = nowMillis - BACKFILL_WINDOW_MILLIS

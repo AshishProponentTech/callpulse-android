@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.proponenttech.callpulse.core.data.device.DeviceRepository
 import com.proponenttech.callpulse.core.data.device.PermissionState
 import com.proponenttech.callpulse.core.data.session.AppPreferences
+import com.proponenttech.callpulse.core.data.session.SessionRepository
+import com.proponenttech.callpulse.core.network.dto.ProjectDto
 import com.proponenttech.callpulse.core.data.sync.SyncScheduler
 import com.proponenttech.callpulse.core.network.ApiResult
 import com.proponenttech.callpulse.feature.capture.CaptureScheduler
@@ -29,9 +31,17 @@ data class OnboardingUiState(
     val notificationsGranted: Boolean = false,
     val contactsGranted: Boolean = false,
     val batteryOptimizationIgnored: Boolean = false,
+    val projects: List<ProjectDto> = emptyList(),
+    val selectedProjectId: Long? = null,
 ) {
-    /** Decision #14 + §12 — capture needs consent recorded AND the call log permission. */
-    val captureReady: Boolean get() = consentAccepted && callLogGranted
+    /**
+     * Capture runs hands-off, so all three have to be true before it starts: consent recorded
+     * (decision #14), the call log permission (§12), and a project for captured calls to land on
+     * (rule 7 - no call may exist without one). Leaving the project unset would capture calls
+     * that can never sync.
+     */
+    val captureReady: Boolean
+        get() = consentAccepted && callLogGranted && selectedProjectId != null
 }
 
 @HiltViewModel
@@ -39,6 +49,7 @@ class OnboardingViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository,
     private val permissions: PermissionState,
     private val preferences: AppPreferences,
+    private val session: SessionRepository,
     private val captureScheduler: CaptureScheduler,
     private val syncScheduler: SyncScheduler,
 ) : ViewModel() {
@@ -55,6 +66,23 @@ class OnboardingViewModel @Inject constructor(
             }
             refreshPermissions()
         }
+
+        viewModelScope.launch {
+            session.cachedProjects.collect { projects ->
+                _state.update { it.copy(projects = projects) }
+            }
+        }
+
+        viewModelScope.launch {
+            session.defaultProjectId.collect { id ->
+                _state.update { it.copy(selectedProjectId = id) }
+                if (_state.value.captureReady) startCapture()
+            }
+        }
+    }
+
+    fun selectProject(projectId: Long) {
+        viewModelScope.launch { session.setDefaultProject(projectId) }
     }
 
     /** Called whenever the screen resumes — permissions can change outside the app. */

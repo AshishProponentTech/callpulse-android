@@ -4,6 +4,7 @@ import android.os.Build
 import com.proponenttech.callpulse.core.network.ApiCall
 import com.proponenttech.callpulse.core.network.ApiConfig
 import com.proponenttech.callpulse.core.network.ApiResult
+import com.proponenttech.callpulse.core.data.db.CallSessionDao
 import com.proponenttech.callpulse.core.network.CallPulseApi
 import com.proponenttech.callpulse.core.network.dto.BootstrapResponse
 import com.proponenttech.callpulse.core.network.dto.DeviceInfoDto
@@ -29,6 +30,7 @@ class SessionRepository @Inject constructor(
     private val preferences: AppPreferences,
     private val config: ApiConfig,
     private val json: Json,
+    private val dao: CallSessionDao,
 ) {
 
     val isLoggedIn: Boolean get() = secureStore.token != null
@@ -99,7 +101,19 @@ class SessionRepository @Inject constructor(
         return result as ApiResult<BootstrapResponse>
     }
 
-    suspend fun setDefaultProject(projectId: Long?) = preferences.setDefaultProjectId(projectId)
+    /**
+     * Choosing a project also rescues any draft captured before one existed. Without this a call
+     * made during setup could never sync — rule 7 forbids a call without a project, so it would
+     * sit in the queue forever with no way out.
+     */
+    suspend fun setDefaultProject(projectId: Long?) {
+        preferences.setDefaultProjectId(projectId)
+
+        if (projectId != null) {
+            val filled = dao.assignProjectToUnassigned(projectId)
+            if (filled > 0) Timber.i("Assigned a project to %d previously stuck draft(s)", filled)
+        }
+    }
 
     suspend fun logout() {
         // Best effort: if the server is unreachable the local session still goes.

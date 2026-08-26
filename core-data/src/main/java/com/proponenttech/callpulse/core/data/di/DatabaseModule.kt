@@ -36,6 +36,7 @@ object DatabaseModule {
 
         return Room.databaseBuilder(context, CallPulseDatabase::class.java, CallPulseDatabase.NAME)
             .openHelperFactory(factory)
+            .addMigrations(CallPulseDatabase.MIGRATION_1_2)
             // Deliberately NO fallbackToDestructiveMigration — see §19.
             .build()
     }

@@ -54,6 +54,16 @@ interface CallSessionDao {
         toMillis: Long,
     ): CallSessionEntity?
 
+    /**
+     * Fills in the project on drafts captured before one was chosen.
+     *
+     * Deliberately only touches rows where it is NULL. §11.4 says changing the sticky project
+     * affects future calls only and historical drafts are never rewritten — filling a blank is
+     * not the same thing as overwriting a decision someone already made.
+     */
+    @Query("UPDATE call_drafts SET projectId = :projectId WHERE projectId IS NULL")
+    suspend fun assignProjectToUnassigned(projectId: Long): Int
+
     // ---- sync queue -------------------------------------------------------------------------
 
     @Query("SELECT * FROM call_drafts WHERE syncStatus IN ('pending', 'syncing') ORDER BY startedAtMillis ASC LIMIT :limit")
