@@ -2,6 +2,7 @@ package com.proponenttech.callpulse.core.network.di
 
 import com.proponenttech.callpulse.core.network.ApiCall
 import com.proponenttech.callpulse.core.network.ApiConfig
+import com.proponenttech.callpulse.core.network.BaseUrlProvider
 import com.proponenttech.callpulse.core.network.CallPulseApi
 import com.proponenttech.callpulse.core.network.TokenProvider
 import dagger.Module
@@ -10,6 +11,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -35,7 +37,35 @@ object NetworkModule {
     fun provideOkHttp(
         config: ApiConfig,
         tokenProvider: TokenProvider,
+        baseUrlProvider: BaseUrlProvider,
     ): OkHttpClient {
+        /*
+         * Retrofit's baseUrl is fixed at construction, but the staging server's LAN address is
+         * assigned by DHCP and moves. This rewrites the scheme/host/port per request when an
+         * override is set, so a reassignment is corrected on the device instead of costing a
+         * rebuild and reinstall. Returns null in release builds, leaving requests untouched.
+         */
+        val baseUrlRewrite = Interceptor { chain ->
+            val override = baseUrlProvider.currentBaseUrl()?.toHttpUrlOrNull()
+            val request = chain.request()
+
+            val rewritten = if (override == null) {
+                request
+            } else {
+                request.newBuilder()
+                    .url(
+                        request.url.newBuilder()
+                            .scheme(override.scheme)
+                            .host(override.host)
+                            .port(override.port)
+                            .build(),
+                    )
+                    .build()
+            }
+
+            chain.proceed(rewritten)
+        }
+
         val headers = Interceptor { chain ->
             val builder = chain.request().newBuilder()
                 .header("Accept", "application/json")
@@ -50,6 +80,7 @@ object NetworkModule {
         }
 
         return OkHttpClient.Builder()
+            .addInterceptor(baseUrlRewrite)
             .addInterceptor(headers)
             .apply {
                 if (config.isDebug) {

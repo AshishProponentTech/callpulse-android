@@ -2,6 +2,7 @@ package com.proponenttech.callpulse.feature.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.proponenttech.callpulse.core.data.session.DevSettings
 import com.proponenttech.callpulse.core.data.session.SessionRepository
 import com.proponenttech.callpulse.core.network.ApiConfig
 import com.proponenttech.callpulse.core.network.ApiResult
@@ -36,10 +37,17 @@ data class LoginUiState(
 class LoginViewModel @Inject constructor(
     private val session: SessionRepository,
     private val config: ApiConfig,
+    private val devSettings: DevSettings,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
-        LoginUiState(serverUrl = if (config.isDebug) config.baseUrl else null),
+        LoginUiState(
+            serverUrl = if (config.isDebug) {
+                devSettings.baseUrlOverride ?: config.baseUrl
+            } else {
+                null
+            },
+        ),
     )
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
@@ -92,6 +100,17 @@ class LoginViewModel @Inject constructor(
                     it.copy(isSubmitting = false, progressLabel = null, error = result.toMessage())
                 }
             }
+        }
+    }
+
+    /**
+     * Debug builds only. The staging machine's LAN address is DHCP-assigned and moves; this
+     * lets it be corrected on the device rather than rebuilding the APK.
+     */
+    fun onServerUrlChange(value: String) {
+        devSettings.baseUrlOverride = value
+        _state.update {
+            it.copy(serverUrl = devSettings.baseUrlOverride ?: config.baseUrl, error = null)
         }
     }
 

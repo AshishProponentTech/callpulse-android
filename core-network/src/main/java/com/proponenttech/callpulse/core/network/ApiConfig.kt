@@ -19,3 +19,13 @@ interface ApiConfig {
 interface TokenProvider {
     fun currentToken(): String?
 }
+
+/**
+ * Debug-only base URL override. Retrofit fixes its baseUrl at construction, so an interceptor
+ * rewrites the scheme/host/port per request when this returns non-null. Returns null in release
+ * builds and whenever no override has been set, in which case the flavor's BuildConfig value
+ * stands. Declared here so core-network does not depend on core-data.
+ */
+interface BaseUrlProvider {
+    fun currentBaseUrl(): String?
+}

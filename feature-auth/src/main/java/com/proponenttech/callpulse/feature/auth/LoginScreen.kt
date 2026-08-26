@@ -18,9 +18,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -45,6 +49,7 @@ fun LoginRoute(
         state = state,
         onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
+        onServerUrlChange = viewModel::onServerUrlChange,
         onSubmit = viewModel::submit,
     )
 }
@@ -54,6 +59,7 @@ fun LoginScreen(
     state: LoginUiState,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onServerUrlChange: (String) -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -157,15 +163,41 @@ fun LoginScreen(
                 }
             }
 
-            // Debug builds only: which server this APK is wired to. Saves guessing when an
-            // emulator build (10.0.2.2) is installed on a real phone by mistake.
+            /*
+             * Debug builds only. The staging server sits on a development machine whose LAN
+             * address is handed out by DHCP and has already moved twice; pinning it at build
+             * time made every reassignment cost a rebuild and a reinstall. Editing it here fixes
+             * that on the device. Release builds never show this and cannot be repointed.
+             */
             if (!state.isSubmitting && state.serverUrl != null) {
+                var serverField by remember(state.serverUrl) { mutableStateOf(state.serverUrl) }
+
                 Text(
-                    text = "Server: ${state.serverUrl}",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "Developer settings",
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 32.dp, bottom = 4.dp),
                 )
+                OutlinedTextField(
+                    value = serverField,
+                    onValueChange = { serverField = it },
+                    label = { Text("Server address") },
+                    singleLine = true,
+                    supportingText = { Text("e.g. 192.168.1.45:8000 — tap Apply after editing") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Done,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(
+                    onClick = { onServerUrlChange(serverField) },
+                    modifier = Modifier.align(Alignment.End),
+                ) {
+                    Text("Apply server address")
+                }
             }
         }
     }
