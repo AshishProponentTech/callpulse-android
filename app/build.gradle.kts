@@ -24,8 +24,11 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
 
         // §18.2 — monotonically increasing, never reused. Bump on every build handed to anyone.
-        versionCode = 1
-        versionName = "0.1.0"
+        // 2 = the first build that talks to the live server at proponenttech.in, and the first
+        // signed with the real release key. versionCode 1 was debug-signed and pointed at a host
+        // that never served this API; it was never distributed.
+        versionCode = 2
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -91,7 +94,13 @@ android {
         }
         create("production") {
             dimension = "env"
-            buildConfigField("String", "API_BASE_URL", "\"https://pm.proponenttech.com/api/v1/\"")
+
+            /*
+             * The live ERP at proponenttech.in serves the CallPulse API and owns the projects
+             * and employee accounts the app authenticates against. There is no separate
+             * call-tracking backend: routes/api.php in proponent-admin is the server.
+             */
+            buildConfigField("String", "API_BASE_URL", "\"https://proponenttech.in/api/v1/\"")
         }
     }
 

@@ -1,3 +1,34 @@
+> # ⛔ SUPERSEDED — read this before anything else
+>
+> **You are in the Android app** — this part of the repo is still current.
+>
+> **The CallPulse backend now lives in `D:\Project\proponent-admin`** (the live ERP at
+> https://proponenttech.in), on branch `feature/project-app-data-callpulse`. It was moved there
+> on 2026-09-08 because the `laravel/` scaffold in this repo sits on stub `users`/`projects`/
+> `tasks` tables with no real data, while proponent-admin already owns the live projects and
+> employee accounts the app authenticates against.
+>
+> **Do server-side work in proponent-admin, not here.** `D:\Project\call-track-android\laravel`
+> is retired: do not add endpoints, migrations or services to it.
+>
+> ### Rules below that the shipped build does NOT follow
+>
+> These were decided against during the move. Do not "restore" them:
+>
+> | Rule below | What actually shipped |
+> |---|---|
+> | Reuse `pm-system` tasks / milestones / `project_user` | **No Project Management link at all.** `call_sessions` has no `task_id` or `milestone_id`; a call belongs to a `projects` row and nothing else. |
+> | Four new tables incl. `call_app_releases` | Three: `call_devices`, `call_sessions`, `call_telemetry_events`. |
+> | UTC in the database | The application timezone (`Asia/Kolkata`), matching proponent-admin's `config('app.timezone')`. |
+> | Numbers masked without `call.view_numbers` | Numbers are shown **in full** to anyone holding `callpulse.view`. There is no masking layer. |
+> | `App\Services\CallAnalytics`, 5 dashboard pages | One read-only screen pair, "Project App Data", driven by `App\Http\Controllers\CallData\CallDataController`. |
+> | Column type `timestamp` | `dateTime`. MariaDB's default `explicit_defaults_for_timestamp=OFF` gives the first NOT NULL `TIMESTAMP` column an implicit `ON UPDATE CURRENT_TIMESTAMP`, which silently rewrote `started_at` on every re-ingest. |
+>
+> The Android app in `callpulse-android/` is still live and still built from here. Its production
+> flavour points at `https://proponenttech.in/api/v1/`.
+
+---
+
 # CLAUDE.md — CallPulse
 
 Project rules for any AI-assisted work in this repository. Read

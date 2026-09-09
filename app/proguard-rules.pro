@@ -60,3 +60,14 @@
 # hide the original file name.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# ---- Tink (androidx.security.crypto -> EncryptedSharedPreferences) -------------------------
+# Tink is annotated with Error Prone's compile-time annotations, which are deliberately not on
+# the runtime classpath. R8 treats the dangling references as an error and fails the release
+# build, so tell it they are expected. Compile-time only — nothing to keep at runtime.
+# These are exactly the four rules AGP writes to
+# app/build/outputs/mapping/productionRelease/missing_rules.txt.
+-dontwarn com.google.errorprone.annotations.CanIgnoreReturnValue
+-dontwarn com.google.errorprone.annotations.CheckReturnValue
+-dontwarn com.google.errorprone.annotations.Immutable
+-dontwarn com.google.errorprone.annotations.RestrictedApi

@@ -3,7 +3,9 @@
 Analysis of `CALLPULSE_BUILD_INSTRUCTIONS.md` (v1.0) + `CLAUDE.md`, current-state gap
 assessment, and an execution plan.
 
-Prepared 2026-08-11. Status: **pre-Stage A, blocked.**
+Prepared 2026-08-11. Status: **superseded 2026-09-08 — the backend shipped in `proponent-admin`.**
+Kept for the design rationale in sections 3-4, which still holds. The repo layout,
+blockers and staging plan below describe a plan that was not the one followed.
 
 ---
 
@@ -44,13 +46,13 @@ and **no `pm-system` checkout on this machine.**
 
 | # | Blocker | Impact | Owner |
 |---|---------|--------|-------|
-| B1 | **`pm-system` is not on this machine.** I scanned all of `D:\Project\` — the only ProponentTech Laravel app present is `proponent-admin`, which is an HR/ERP system (attendance, payroll, leave, invoices). It has `users` and `projects`, but **no `tasks`, `milestones`, `task_templates`, or `work_logs`** — the four tables CallPulse is built to reuse. It is not `pm-system`. | Stage A cannot start. Stages B–E are entirely downstream of Stage A. | Human — clone `pm-system` locally with a working `.env` and a scratch DB |
+| ~~B1~~ | **RESOLVED 2026-09-08 — this analysis was wrong, and the fix was not the one proposed here.** `proponent-admin` had since gained the PM module, and it *is* the live system at proponenttech.in. Rather than clone a separate `pm-system`, the CallPulse backend was **built inside proponent-admin** against its live `projects` and `users`, and the call tables were deliberately **not** linked to tasks/milestones/work_logs at all. See `proponent-admin`, branch `feature/project-app-data-callpulse`. | None. Stages A–E are done, in a different repo. | Closed |
 | B2 | Staging Laravel URL over HTTPS with a **valid public cert** (§3, §18.6) | Blocks the Stage E→F handoff gate and all real-device testing | Human/IT |
 | B3 | 2+ physical Android phones, one of them Xiaomi/Oppo/Vivo/Realme (§3). Emulators cannot test call capture. | Blocks Stage I acceptance and the entire Stage O matrix | Human |
 | B4 | Signed consent policy PDF, hosted at a public URL (§3, decision #14) | Blocks Stage H; the server rejects ingest without a consent record | Human/HR+Legal |
 | B5 | Release keystore generated and backed up in two places (§18.1) | Blocks Stage N. Losing it later forces every employee to uninstall/reinstall. | Human |
 
-B1 is the only one blocking *today's* work. B2–B5 have lead time — start them in parallel now.
+B1 is closed (see above). Of the rest, B2–B5 have lead time — start them in parallel now.
 
 ### 2.2 Repo hygiene problems in the plan documents themselves
 
