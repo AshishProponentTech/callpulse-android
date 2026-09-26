@@ -70,6 +70,17 @@ class HomeViewModel @Inject constructor(
             captureScheduler.ensurePeriodicReconcile()
             captureScheduler.scanNow()
         }
+
+        /*
+         * Re-arm the periodic upload and heartbeat too, not just the periodic capture.
+         *
+         * These were armed once during onboarding and never again, so when an OEM battery
+         * manager or a force-stop dropped the queued work, nothing restored it — leaving
+         * syncNow() below as the only surviving upload path, which is why data appeared only
+         * when someone opened the app. KEEP means re-arming an existing schedule is a no-op.
+         */
+        syncScheduler.ensurePeriodicSync()
+        syncScheduler.ensurePeriodicHeartbeat()
         syncScheduler.syncNow()
     }
 

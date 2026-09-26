@@ -27,8 +27,8 @@ android {
         // 2 = the first build that talks to the live server at proponenttech.in, and the first
         // signed with the real release key. versionCode 1 was debug-signed and pointed at a host
         // that never served this API; it was never distributed.
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

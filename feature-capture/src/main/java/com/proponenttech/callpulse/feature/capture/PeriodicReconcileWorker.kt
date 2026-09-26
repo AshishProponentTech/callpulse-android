@@ -31,9 +31,25 @@ class PeriodicReconcileWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = try {
         val result = captureRepository.scan()
 
+        /*
+         * Flush whenever anything is waiting, NOT only when this scan found something new.
+         *
+         * The old condition was `result.created > 0`, which quietly made the app dependent on
+         * being opened: once a row was captured but its upload failed — no signal at the moment
+         * syncNow() fired, an expired token, the worker killed mid-flight — every later
+         * reconcile scanned, found 0 NEW calls because the row was already in the local
+         * database, and therefore never retried the upload. The backlog then sat there until
+         * HomeViewModel.onResume() called syncNow(), i.e. until someone opened the app.
+         */
+        val pending = dao.pendingCount()
+
+        if (pending > 0) {
+            Timber.i("Reconcile: %d new, %d awaiting upload - syncing", result.created, pending)
+            syncScheduler.syncNow()
+        }
+
         if (result.created > 0) {
             Timber.i("Reconcile picked up %d call(s) the receiver missed", result.created)
-            syncScheduler.syncNow()
             notifier.notifyCapture(
                 newCount = result.created,
                 totalUnreviewed = dao.observeUnreviewedCount().first(),

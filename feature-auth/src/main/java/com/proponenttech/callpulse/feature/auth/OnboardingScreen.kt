@@ -2,6 +2,14 @@ package com.proponenttech.callpulse.feature.auth
 
 import android.Manifest
 import android.os.Build
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -44,6 +52,21 @@ fun OnboardingRoute(
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    /*
+     * Returning from the battery-optimisation dialog produces no result, so re-read the
+     * permission state whenever this screen resumes. Otherwise the prompt stays on screen after
+     * the user has already granted it, and they tap it again wondering why nothing happened.
+     */
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshPermissions()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -155,6 +178,46 @@ fun OnboardingRoute(
                         modifier = Modifier.padding(top = 12.dp),
                     ) {
                         Text(if (state.callLogGranted) "Review permissions" else "Grant permissions")
+                    }
+
+                    /*
+                     * The manifest has always declared REQUEST_IGNORE_BATTERY_OPTIMIZATIONS and
+                     * the heartbeat has always reported whether it was granted — but nothing
+                     * ever ASKED for it. Under Doze the 15-minute upload is deferred to
+                     * whenever the system feels like it, which on many handsets means "when the
+                     * user next opens the app". Asking is the single highest-impact thing the
+                     * app can do about background reliability.
+                     */
+                    if (!state.batteryOptimizationIgnored) {
+                        OutlinedButton(
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(
+                                            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                            Uri.parse("package:" + context.packageName),
+                                        )
+                                    )
+                                }.onFailure {
+                                    // Some OEM builds hide this screen. Fall back to the
+                                    // general battery settings list rather than crashing.
+                                    runCatching {
+                                        context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                                    }
+                                }
+                            },
+                            modifier = Modifier.padding(top = 8.dp),
+                        ) {
+                            Text("Allow background syncing")
+                        }
+
+                        Text(
+                            text = "Without this, Android pauses the app and calls only upload " +
+                                "when you next open it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
                     }
 
                     if (!state.consentAccepted) {

@@ -2,6 +2,11 @@ package com.proponenttech.callpulse.feature.capture
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
+import android.app.Notification
+import android.content.pm.ServiceInfo
+import android.os.Build
+import androidx.work.ForegroundInfo
+import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.proponenttech.callpulse.core.data.db.CallSessionDao
@@ -28,6 +33,30 @@ class CallLogScanWorker @AssistedInject constructor(
     private val notifier: ReviewNotifier,
     private val syncScheduler: SyncScheduler,
 ) : CoroutineWorker(appContext, params) {
+
+    /**
+     * Required because scanAfterCall() marks this work expedited.
+     *
+     * On API < 31 WorkManager runs expedited work as a foreground service and calls this;
+     * CoroutineWorker's default implementation throws IllegalStateException, so the post-call
+     * scan died immediately on every Android 8-11 handset. minSdk is 26, so that is a real
+     * slice of the fleet, and the failure was silent — the periodic reconcile picked the call
+     * up later, which is exactly the kind of bug that hides behind a working fallback.
+     */
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        val notification: Notification = NotificationCompat.Builder(applicationContext, ReviewNotifier.CHANNEL_ID)
+            .setContentTitle("Updating call log")
+            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(SCAN_NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(SCAN_NOTIFICATION_ID, notification)
+        }
+    }
 
     override suspend fun doWork(): Result {
         return try {
@@ -69,6 +98,8 @@ class CallLogScanWorker @AssistedInject constructor(
     }
 
     companion object {
+        const val SCAN_NOTIFICATION_ID = 1002
+
         const val NAME = "callpulse_call_log_scan"
         const val KEY_EXPECT_NEW_CALL = "expect_new_call"
         private const val MAX_ATTEMPTS = 3

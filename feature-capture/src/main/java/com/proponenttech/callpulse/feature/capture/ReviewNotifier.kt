@@ -89,8 +89,14 @@ class ReviewNotifier @Inject constructor(
         }
     }
 
-    private companion object {
-        const val CHANNEL_ID = "call_review"
-        const val NOTIFICATION_ID = 1001
+    companion object {
+        /**
+         * Internal, not private: CallLogScanWorker posts its expedited-work foreground
+         * notification on this same channel, so the employee sees one "CallPulse" channel in
+         * system settings rather than two they might silence independently.
+         */
+        internal const val CHANNEL_ID = "call_review"
+
+        private const val NOTIFICATION_ID = 1001
     }
 }
