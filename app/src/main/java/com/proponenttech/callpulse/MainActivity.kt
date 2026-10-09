@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -37,6 +38,17 @@ class MainActivity : ComponentActivity() {
             CallPulseTheme {
                 val navController = rememberNavController()
 
+                LaunchedEffect(Unit) {
+                    session.state.signedIn.collect { signedIn ->
+                        if (!signedIn && navController.currentDestination?.route != Routes.LOGIN) {
+                            navController.navigate(Routes.LOGIN) {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                }
+
                 NavHost(navController = navController, startDestination = start) {
                     composable(Routes.LOGIN) {
                         LoginRoute(
@@ -64,7 +76,8 @@ class MainActivity : ComponentActivity() {
                         HomeRoute(
                             onSignOut = {
                                 navController.navigate(Routes.LOGIN) {
-                                    popUpTo(Routes.HOME) { inclusive = true }
+                                    popUpTo(navController.graph.id) { inclusive = true }
+                                    launchSingleTop = true
                                 }
                             },
                             onOpenOnboarding = { navController.navigate(Routes.ONBOARDING) },

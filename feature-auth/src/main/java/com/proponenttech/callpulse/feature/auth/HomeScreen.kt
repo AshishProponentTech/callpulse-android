@@ -20,6 +20,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +47,14 @@ fun HomeRoute(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.onResume()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold { padding ->
         Column(
@@ -56,7 +68,7 @@ fun HomeRoute(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // §11.4 — "Working on: {Project}" on every screen; tap to change.
+                // §11.4 — "Working on: {School}" on every screen; tap to change.
                 Box {
                     var pickerOpen by remember { mutableStateOf(false) }
 
@@ -64,8 +76,8 @@ fun HomeRoute(
                         onClick = { pickerOpen = true },
                         label = {
                             Text(
-                                state.selectedProject?.name?.let { "Working on: $it" }
-                                    ?: "Choose a project",
+                                state.selectedSchool?.name?.let { "Working on: $it" }
+                                    ?: "Choose a school",
                             )
                         },
                     )
@@ -74,17 +86,17 @@ fun HomeRoute(
                         expanded = pickerOpen,
                         onDismissRequest = { pickerOpen = false },
                     ) {
-                        if (state.projects.isEmpty()) {
+                        if (state.schools.isEmpty()) {
                             DropdownMenuItem(
-                                text = { Text("No projects - pull to refresh") },
+                                text = { Text("No schools available") },
                                 onClick = { pickerOpen = false },
                             )
                         }
-                        state.projects.forEach { project ->
+                        state.schools.forEach { school ->
                             DropdownMenuItem(
-                                text = { Text(project.name) },
+                                text = { Text(school.name) },
                                 onClick = {
-                                    viewModel.selectProject(project.id)
+                                    viewModel.selectSchool(school.id)
                                     pickerOpen = false
                                 },
                             )
@@ -99,7 +111,7 @@ fun HomeRoute(
              * not been recorded. Capture silently doing nothing is the worst possible failure
              * mode: the employee believes they are being tracked and the manager sees no data.
              */
-            if (!state.consentAccepted || !viewModel.canCapture) {
+            if (!viewModel.canCapture) {
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -118,6 +130,8 @@ fun HomeRoute(
                         Text(
                             text = if (!state.consentAccepted) {
                                 "Consent has not been recorded. Tap to finish setup."
+                            } else if (state.selectedSchool == null) {
+                                "Choose a school to start capture."
                             } else {
                                 "The call log permission is not granted. Tap to fix."
                             },
@@ -134,7 +148,7 @@ fun HomeRoute(
                 modifier = Modifier.padding(top = 16.dp),
             )
             Text(
-                text = "${state.calls.size} captured · ${state.unreviewedCount} unreviewed",
+                text = "${state.calls.size} captured",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -151,6 +165,10 @@ fun HomeRoute(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 24.dp),
                 )
+            }
+
+            if (state.failedCount > 0) {
+                TextButton(onClick = viewModel::retryFailed) { Text("Retry failed uploads") }
             }
 
             LazyColumn(
@@ -186,7 +204,7 @@ private fun CallRow(call: CallSessionEntity) {
                 Text(
                     // Elvis only falls through on null, so a blank string would render an empty
                     // row - which is exactly what a withheld number produces (§13.4).
-                    text = listOfNotNull(call.contactName, call.phoneE164, call.phoneDisplay)
+                    text = listOfNotNull(call.leadName, call.contactName, call.phoneE164, call.phoneDisplay)
                         .firstOrNull { it.isNotBlank() }
                         ?: "Private number",
                     style = MaterialTheme.typography.bodyLarge,
@@ -205,9 +223,10 @@ private fun CallRow(call: CallSessionEntity) {
 
             // §15 — a rejected row must be visible, with the reason, not silently stuck.
             val syncLabel = when (call.syncStatus) {
-                SyncStatus.SYNCED -> "Synced"
+                SyncStatus.SYNCED -> "Uploaded"
+                SyncStatus.SKIPPED -> call.syncError ?: "Upload skipped"
                 SyncStatus.FAILED -> call.syncError ?: "Rejected by the server"
-                else -> if (call.projectId == null) "Needs a project before it can sync" else "Waiting to sync"
+                else -> if (call.schoolId == null) "Choose a school" else "Waiting to upload"
             }
 
             Text(
@@ -219,6 +238,7 @@ private fun CallRow(call: CallSessionEntity) {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
             )
+            call.leadStatus?.let { Text("Lead status: $it", style = MaterialTheme.typography.bodySmall) }
         }
     }
 }

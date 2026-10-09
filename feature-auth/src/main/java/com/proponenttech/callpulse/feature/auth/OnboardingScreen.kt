@@ -87,15 +87,20 @@ fun OnboardingRoute(
                 Column(Modifier.padding(16.dp)) {
                     Text("1. Consent", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = "CallPulse records the number, direction, start time and duration " +
-                            "of your work calls, and which project each one belongs to.\n\n" +
+                        text = "YogatribexCRM records the number, direction, start time and duration " +
+                            "of your calls and uploads them automatically to your school’s CRM.\n\n" +
                             "It never records audio, never reads your messages, and never " +
-                            "uploads your contacts. Calls you mark as personal are excluded " +
-                            "from all reporting and their numbers are hidden from everyone " +
-                            "except you.",
+                            "uploads your address book. Numbers on the personal exclusion list " +
+                            "are never uploaded. Unlinked calls are removed by the server after 30 days.",
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(top = 8.dp),
                     )
+
+                    state.policyUrl?.let { url ->
+                        OutlinedButton(onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }) { Text("Read consent policy") }
+                    }
 
                     if (state.consentAccepted) {
                         Text(
@@ -127,7 +132,7 @@ fun OnboardingRoute(
 
                         Button(
                             onClick = viewModel::acceptConsent,
-                            enabled = state.consentChecked && !state.isSubmittingConsent,
+                            enabled = state.consentVersion != null && state.consentChecked && !state.isSubmittingConsent,
                             modifier = Modifier.padding(top = 8.dp),
                         ) {
                             if (state.isSubmittingConsent) {
@@ -161,7 +166,7 @@ fun OnboardingRoute(
                     )
                     PermissionRow(
                         label = "Notifications",
-                        detail = "The review prompt after a call",
+                        detail = "Confirms when a call has been captured",
                         granted = state.notificationsGranted,
                     )
                     PermissionRow(
@@ -231,12 +236,12 @@ fun OnboardingRoute(
                 }
             }
 
-            // ---- Step 3: project ------------------------------------------------------------
+            // ---- Step 3: school ------------------------------------------------------------
             Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("3. Default project", style = MaterialTheme.typography.titleMedium)
+                    Text("3. Default school", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = "Captured calls are logged against this project automatically, " +
+                        text = "Captured calls are logged against this school automatically, " +
                             "with no action from you. You can change it any time; it only " +
                             "affects calls made afterwards.",
                         style = MaterialTheme.typography.bodySmall,
@@ -244,35 +249,28 @@ fun OnboardingRoute(
                         modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
                     )
 
-                    if (state.projects.isEmpty()) {
+                    if (state.schools.isEmpty()) {
                         Text(
-                            "No projects available for your account.",
+                            "No schools available for your account.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
 
-                    state.projects.forEach { project ->
+                    state.schools.forEach { school ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { viewModel.selectProject(project.id) }
+                                .clickable { viewModel.selectSchool(school.id) }
                                 .padding(vertical = 4.dp),
                         ) {
                             RadioButton(
-                                selected = state.selectedProjectId == project.id,
-                                onClick = { viewModel.selectProject(project.id) },
+                                selected = state.selectedSchoolId == school.id,
+                                onClick = { viewModel.selectSchool(school.id) },
                             )
                             Column {
-                                Text(project.name, style = MaterialTheme.typography.bodyMedium)
-                                project.clientName?.let {
-                                    Text(
-                                        it,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                                Text(school.name, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }

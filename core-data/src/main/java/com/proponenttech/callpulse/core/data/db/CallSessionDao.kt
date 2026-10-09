@@ -55,25 +55,34 @@ interface CallSessionDao {
     ): CallSessionEntity?
 
     /**
-     * Fills in the project on drafts captured before one was chosen.
+     * Fills in the school on drafts captured before one was chosen.
      *
-     * Deliberately only touches rows where it is NULL. §11.4 says changing the sticky project
+     * Deliberately only touches rows where it is NULL. Changing the selected school
      * affects future calls only and historical drafts are never rewritten — filling a blank is
      * not the same thing as overwriting a decision someone already made.
      */
-    @Query("UPDATE call_drafts SET projectId = :projectId WHERE projectId IS NULL")
-    suspend fun assignProjectToUnassigned(projectId: Long): Int
+    @Query("UPDATE call_drafts SET schoolId = :schoolId WHERE schoolId IS NULL")
+    suspend fun assignSchoolToUnassigned(schoolId: String): Int
+
+    @Query("UPDATE call_drafts SET syncStatus = 'skipped', syncError = :reason WHERE clientUuid = :clientUuid")
+    suspend fun markSkipped(clientUuid: String, reason: String)
+
+    @Query("UPDATE call_drafts SET syncStatus = 'pending', syncError = NULL WHERE syncStatus = 'failed'")
+    suspend fun retryFailed(): Int
+
+    @Query("SELECT COUNT(*) FROM call_drafts WHERE syncStatus = 'failed'")
+    fun observeFailedCount(): Flow<Int>
 
     // ---- sync queue -------------------------------------------------------------------------
 
-    @Query("SELECT * FROM call_drafts WHERE syncStatus IN ('pending', 'syncing') ORDER BY startedAtMillis ASC LIMIT :limit")
+    @Query("SELECT * FROM call_drafts WHERE schoolId IS NOT NULL AND syncStatus IN ('pending', 'syncing') ORDER BY startedAtMillis ASC LIMIT :limit")
     suspend fun pendingForSync(limit: Int): List<CallSessionEntity>
 
     @Query("SELECT COUNT(*) FROM call_drafts WHERE syncStatus = 'pending'")
     suspend fun pendingCount(): Int
 
-    @Query("UPDATE call_drafts SET syncStatus = :status, serverId = :serverId, syncError = NULL WHERE clientUuid = :clientUuid")
-    suspend fun markSynced(clientUuid: String, status: String, serverId: Long?)
+    @Query("UPDATE call_drafts SET syncStatus = 'synced', serverId = :serverId, leadId = :leadId, leadName = :leadName, leadStatus = :leadStatus, reviewState = :reviewState, syncError = NULL WHERE clientUuid = :clientUuid")
+    suspend fun markSynced(clientUuid: String, serverId: String?, leadId: String?, leadName: String?, leadStatus: String?, reviewState: String)
 
     @Query("UPDATE call_drafts SET syncStatus = 'failed', syncError = :error, syncAttempts = syncAttempts + 1 WHERE clientUuid = :clientUuid")
     suspend fun markFailed(clientUuid: String, error: String)

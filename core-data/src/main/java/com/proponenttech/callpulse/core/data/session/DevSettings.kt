@@ -35,8 +35,8 @@ class DevSettings @Inject constructor(
         }
 
     /**
-     * Accepts what someone actually types — "192.168.1.45", "192.168.1.45:8000",
-     * "http://192.168.1.45:8000", or a full ".../api/v1/" — and produces a URL Retrofit
+     * Accepts what someone actually types — "192.168.1.45", "192.168.1.45:8123",
+     * "http://192.168.1.45:8123", or a full ".../api/v1/" — and produces a URL Retrofit
      * accepts. Retrofit requires the base URL to end in "/".
      */
     private fun normalise(input: String): String {
@@ -49,7 +49,7 @@ class DevSettings @Inject constructor(
 
         val authority = url.removePrefix("http://").removePrefix("https://").substringBefore('/')
         if (!authority.contains(':')) {
-            url = url.replaceFirst(authority, authority + ":8000")
+            url = url.replaceFirst(authority, authority + ":8123")
         }
 
         if (!url.contains("/api/")) {

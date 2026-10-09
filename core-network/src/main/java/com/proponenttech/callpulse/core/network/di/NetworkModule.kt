@@ -5,6 +5,8 @@ import com.proponenttech.callpulse.core.network.ApiConfig
 import com.proponenttech.callpulse.core.network.BaseUrlProvider
 import com.proponenttech.callpulse.core.network.CallPulseApi
 import com.proponenttech.callpulse.core.network.TokenProvider
+import com.proponenttech.callpulse.core.network.SchoolProvider
+import com.proponenttech.callpulse.core.network.SessionListener
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,6 +40,7 @@ object NetworkModule {
         config: ApiConfig,
         tokenProvider: TokenProvider,
         baseUrlProvider: BaseUrlProvider,
+        schoolProvider: SchoolProvider,
     ): OkHttpClient {
         /*
          * Retrofit's baseUrl is fixed at construction, but the staging server's LAN address is
@@ -75,6 +78,7 @@ object NetworkModule {
             tokenProvider.currentToken()?.let { token ->
                 builder.header("Authorization", "Bearer $token")
             }
+            schoolProvider.currentSchoolId()?.let { builder.header("X-School-Id", it) }
 
             chain.proceed(builder.build())
         }
@@ -116,5 +120,5 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideApiCall(json: Json): ApiCall = ApiCall(json)
+    fun provideApiCall(json: Json, listener: SessionListener): ApiCall = ApiCall(json, listener)
 }

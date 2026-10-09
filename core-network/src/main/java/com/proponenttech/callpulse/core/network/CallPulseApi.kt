@@ -6,8 +6,9 @@ import com.proponenttech.callpulse.core.network.dto.LoginRequest
 import com.proponenttech.callpulse.core.network.dto.BatchRequest
 import com.proponenttech.callpulse.core.network.dto.BatchResponse
 import com.proponenttech.callpulse.core.network.dto.ConsentRequest
-import com.proponenttech.callpulse.core.network.dto.DeviceStateDto
+import com.proponenttech.callpulse.core.network.dto.ConsentResponse
 import com.proponenttech.callpulse.core.network.dto.HeartbeatRequest
+import com.proponenttech.callpulse.core.network.dto.HeartbeatResponse
 import com.proponenttech.callpulse.core.network.dto.LoginResponse
 import retrofit2.Response
 import retrofit2.http.Body
@@ -25,29 +26,29 @@ import retrofit2.http.Query
  */
 interface CallPulseApi {
 
-    @POST("auth/login")
+    @POST("mobile/auth/login")
     suspend fun login(@Body body: LoginRequest): Response<ApiEnvelope<LoginResponse>>
 
-    @POST("auth/refresh")
+    @POST("mobile/auth/refresh")
     suspend fun refresh(): Response<ApiEnvelope<LoginResponse>>
 
-    @POST("auth/logout")
+    @POST("mobile/auth/logout")
     suspend fun logout(): Response<Unit>
 
-    @GET("bootstrap")
+    @GET("mobile/bootstrap")
     suspend fun bootstrap(
         @Query("device_uuid") deviceUuid: String,
     ): Response<ApiEnvelope<BootstrapResponse>>
 
     /** Decision #14 — consent is a stored, versioned record; ingest is refused without it. */
-    @POST("devices/consent")
-    suspend fun recordConsent(@Body body: ConsentRequest): Response<ApiEnvelope<DeviceStateDto>>
+    @POST("mobile/devices/consent")
+    suspend fun recordConsent(@Body body: ConsentRequest): Response<ApiEnvelope<ConsentResponse>>
 
     /** §12.1 — how a manager sees a permission was turned off, without the app nagging. */
-    @POST("devices/heartbeat")
-    suspend fun heartbeat(@Body body: HeartbeatRequest): Response<ApiEnvelope<DeviceStateDto>>
+    @POST("mobile/devices/heartbeat")
+    suspend fun heartbeat(@Body body: HeartbeatRequest): Response<ApiEnvelope<HeartbeatResponse>>
 
     /** §6.2.8 — always HTTP 200 with a per-row status array. */
-    @POST("call-sessions/batch")
+    @POST("mobile/calls/batch")
     suspend fun ingestBatch(@Body body: BatchRequest): Response<ApiEnvelope<BatchResponse>>
 }

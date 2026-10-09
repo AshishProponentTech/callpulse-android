@@ -5,6 +5,10 @@ import com.proponenttech.callpulse.core.data.session.SecureStore
 import com.proponenttech.callpulse.core.network.ApiConfig
 import com.proponenttech.callpulse.core.network.BaseUrlProvider
 import com.proponenttech.callpulse.core.network.TokenProvider
+import com.proponenttech.callpulse.core.network.SchoolProvider
+import com.proponenttech.callpulse.core.network.SessionListener
+import com.proponenttech.callpulse.core.data.session.SchoolStore
+import com.proponenttech.callpulse.core.data.session.SessionState
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,6 +18,14 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DataModule {
+
+    @Provides
+    fun provideSchoolProvider(store: SchoolStore): SchoolProvider = object : SchoolProvider {
+        override fun currentSchoolId(): String? = store.schoolId.value
+    }
+
+    @Provides
+    fun provideSessionListener(state: SessionState): SessionListener = state
 
     /**
      * Bridges core-network's TokenProvider to the encrypted store, so the OkHttp interceptor can

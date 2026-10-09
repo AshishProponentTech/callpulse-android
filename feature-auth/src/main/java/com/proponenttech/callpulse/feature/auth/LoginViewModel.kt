@@ -6,7 +6,7 @@ import com.proponenttech.callpulse.core.data.session.DevSettings
 import com.proponenttech.callpulse.core.data.session.SessionRepository
 import com.proponenttech.callpulse.core.network.ApiConfig
 import com.proponenttech.callpulse.core.network.ApiResult
-import com.proponenttech.callpulse.core.network.dto.ProjectDto
+import com.proponenttech.callpulse.core.network.dto.SchoolDto
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,11 +24,12 @@ data class LoginUiState(
     val progressLabel: String? = null,
     val error: String? = null,
     val signedIn: Boolean = false,
-    val projects: List<ProjectDto> = emptyList(),
-    val workdaySeconds: Int = 28800,
+    val schools: List<SchoolDto> = emptyList(),
     val consentAccepted: Boolean = false,
     /** Debug builds only — shows which server is being contacted. */
     val serverUrl: String? = null,
+    val sessionReason: String? = null,
+    val versionLabel: String = "",
 ) {
     val canSubmit: Boolean get() = email.isNotBlank() && password.isNotBlank() && !isSubmitting
 }
@@ -42,6 +43,7 @@ class LoginViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(
         LoginUiState(
+            versionLabel = "Version ${config.appVersion} · Build ${config.appVersionCode}",
             serverUrl = if (config.isDebug) {
                 devSettings.baseUrlOverride ?: config.baseUrl
             } else {
@@ -50,6 +52,12 @@ class LoginViewModel @Inject constructor(
         ),
     )
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            session.state.reason.collect { reason -> _state.update { it.copy(sessionReason = reason) } }
+        }
+    }
 
     fun onEmailChange(value: String) = _state.update { it.copy(email = value, error = null) }
 
@@ -76,7 +84,7 @@ class LoginViewModel @Inject constructor(
     /** §11.1 — login is not complete until bootstrap has cached the config the app needs. */
     private suspend fun loadBootstrap() {
         // A second round trip follows the login, so say so rather than sitting on "Signing in".
-        _state.update { it.copy(progressLabel = "Loading your projects…") }
+        _state.update { it.copy(progressLabel = "Loading your schools…") }
 
         when (val result = session.bootstrap()) {
             is ApiResult.Success -> {
@@ -86,8 +94,7 @@ class LoginViewModel @Inject constructor(
                         isSubmitting = false,
                         progressLabel = null,
                         signedIn = true,
-                        projects = data.projects,
-                        workdaySeconds = data.workdaySeconds,
+                        schools = data.schools,
                         consentAccepted = data.consent.acceptedAt != null,
                         password = "", // Never keep it in memory past the point it is needed.
                     )
@@ -114,8 +121,8 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun selectProject(projectId: Long) {
-        viewModelScope.launch { session.setDefaultProject(projectId) }
+    fun selectSchool(schoolId: String) {
+        viewModelScope.launch { session.setSchool(schoolId) }
     }
 
     /**
@@ -127,7 +134,7 @@ class LoginViewModel @Inject constructor(
         ApiResult.Unauthenticated -> "Those credentials were not accepted."
         ApiResult.DeviceRevoked -> "Access for this device has been revoked. Contact your administrator."
         ApiResult.ConsentRequired -> "You need to accept the consent policy before continuing."
-        ApiResult.UpdateRequired -> "This version of CallPulse is no longer supported. Please update."
+        ApiResult.UpdateRequired -> "This version of YogaTribeX CallPulse is no longer supported. Please update."
         is ApiResult.ValidationFailed -> errors.values.firstOrNull()?.firstOrNull() ?: message
         is ApiResult.RateLimited -> retryAfterSeconds
             ?.let { "Too many attempts. Try again in $it seconds." }

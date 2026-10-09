@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.proponenttech.callpulse.core.data.db.CallPulseDatabase
 import com.proponenttech.callpulse.core.data.db.CallSessionDao
+import com.proponenttech.callpulse.core.data.db.PersonalNumberDao
 import com.proponenttech.callpulse.core.data.session.SecureStore
 import dagger.Module
 import dagger.Provides
@@ -36,7 +37,7 @@ object DatabaseModule {
 
         return Room.databaseBuilder(context, CallPulseDatabase::class.java, CallPulseDatabase.NAME)
             .openHelperFactory(factory)
-            .addMigrations(CallPulseDatabase.MIGRATION_1_2)
+            .addMigrations(CallPulseDatabase.MIGRATION_1_2, CallPulseDatabase.MIGRATION_2_3)
             // Deliberately NO fallbackToDestructiveMigration — see §19.
             .build()
     }
@@ -44,4 +45,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideCallSessionDao(database: CallPulseDatabase): CallSessionDao = database.callSessionDao()
+
+    @Provides
+    fun providePersonalNumberDao(database: CallPulseDatabase): PersonalNumberDao = database.personalNumberDao()
 }

@@ -30,7 +30,8 @@ class ApiCallTest {
             .code(code)
             .message("error")
             .protocol(okhttp3.Protocol.HTTP_1_1)
-            .request(okhttp3.Request.Builder().url("http://localhost/api/v1/test").build())
+            .request(okhttp3.Request.Builder().url("http://localhost/api/v1/test")
+                .header("Authorization", "Bearer sent-token").build())
             .headers(headers)
             .build(),
     )
@@ -88,14 +89,14 @@ class ApiCallTest {
             errorResponse(
                 422,
                 """{"message":"Invalid.","code":"validation_failed",""" +
-                    """"errors":{"project_id":["The selected project is not accessible."]}}""",
+                    """"errors":{"school_id":["The selected school is not accessible."]}}""",
             )
         }
 
         result as ApiResult.ValidationFailed
         assertEquals(
-            "The selected project is not accessible.",
-            result.errors["project_id"]?.first(),
+            "The selected school is not accessible.",
+            result.errors["school_id"]?.first(),
         )
     }
 
@@ -123,5 +124,26 @@ class ApiCallTest {
     fun `an IO failure is a retryable NetworkError`() = runBlocking {
         val result = apiCall.execute<String> { throw IOException("offline") }
         assertTrue(result is ApiResult.NetworkError)
+    }
+
+    @Test fun `listener receives sent token and device revocation`() = runBlocking {
+        var sent: String? = null
+        var revoked = false
+        val listener = object : SessionListener {
+            override fun onUnauthenticated(sentToken: String?) { sent = sentToken }
+            override fun onDeviceRevoked() { revoked = true }
+        }
+        val call = ApiCall(Json, listener)
+        call.execute { errorResponse(401, """{"code":"token_rotated"}""") }
+        assertEquals("Bearer sent-token", sent)
+        call.execute { errorResponse(403, """{"code":"device_revoked"}""") }
+        assertTrue(revoked)
+    }
+
+    @Test fun `wrong password without errors map is readable`() = runBlocking {
+        val result = apiCall.execute { errorResponse(422, """{"code":"auth_failed"}""") }
+        result as ApiResult.ValidationFailed
+        assertEquals("Email or password is incorrect.", result.message)
+        assertTrue(result.errors.isEmpty())
     }
 }

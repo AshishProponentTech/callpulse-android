@@ -5,15 +5,18 @@ import kotlinx.serialization.json.Json
 import retrofit2.Response
 import timber.log.Timber
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 
 /**
  * Maps an HTTP response onto [ApiResult], translating the Appendix B error table once so no
  * caller has to re-derive it.
  */
-class ApiCall(private val json: Json) {
+class ApiCall(private val json: Json, private val listener: SessionListener? = null) {
 
     suspend fun <T> execute(block: suspend () -> Response<T>): ApiResult<T> = try {
         block().toApiResult()
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: IOException) {
         // Genuinely retryable: no connection, DNS failure, timeout.
         ApiResult.NetworkError(e)
@@ -36,12 +39,18 @@ class ApiCall(private val json: Json) {
         val error = parseError()
 
         return when {
-            code() == 401 -> ApiResult.Unauthenticated
-            code() == 403 && error?.code == "device_revoked" -> ApiResult.DeviceRevoked
+            code() == 401 -> {
+                listener?.onUnauthenticated(raw().request.header("Authorization"))
+                ApiResult.Unauthenticated
+            }
+            code() == 403 && error?.code == "device_revoked" -> {
+                listener?.onDeviceRevoked()
+                ApiResult.DeviceRevoked
+            }
             code() == 409 && error?.code == "consent_required" -> ApiResult.ConsentRequired
             code() == 426 -> ApiResult.UpdateRequired
             code() == 422 -> ApiResult.ValidationFailed(
-                message = error?.message ?: "The server rejected the request.",
+                message = if (error?.code == "auth_failed") "Email or password is incorrect." else error?.message ?: "The server rejected the request.",
                 errors = error?.errors.orEmpty(),
             )
 

@@ -36,11 +36,13 @@ data class CallSessionEntity(
     val clientUuid: String,
 
     /** Set once the server accepts the row, so later updates address the same record. */
-    val serverId: Long? = null,
+    val serverId: String? = null,
 
-    val projectId: Long?,
-    val taskId: Long? = null,
-    val milestoneId: Long? = null,
+    val schoolId: String?,
+    val leadId: String? = null,
+    val leadName: String? = null,
+    val leadStatus: String? = null,
+    val reviewState: String = "unreviewed",
 
     val phoneE164: String?,
     val phoneDisplay: String?,
@@ -86,4 +88,5 @@ object SyncStatus {
     const val SYNCING = "syncing"
     const val SYNCED = "synced"
     const val FAILED = "failed"
+    const val SKIPPED = "skipped"
 }

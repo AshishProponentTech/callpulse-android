@@ -11,15 +11,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * destroys employees' unsynced calls.
  */
 @Database(
-    entities = [CallSessionEntity::class],
-    version = 2,
+    entities = [CallSessionEntity::class, PersonalNumberEntity::class],
+    version = 3,
     exportSchema = true,
 )
 abstract class CallPulseDatabase : RoomDatabase() {
     abstract fun callSessionDao(): CallSessionDao
+    abstract fun personalNumberDao(): PersonalNumberDao
 
     companion object {
         const val NAME = "callpulse.db"
+        val MIGRATION_2_3: Migration = CrmMigration
 
         /**
          * Makes androidCallLogId unique, so a race between two concurrent scans cannot produce a

@@ -8,7 +8,7 @@ import com.proponenttech.callpulse.core.data.device.PermissionState
 import com.proponenttech.callpulse.core.data.session.AppPreferences
 import com.proponenttech.callpulse.core.data.session.SessionRepository
 import com.proponenttech.callpulse.core.data.sync.SyncScheduler
-import com.proponenttech.callpulse.core.network.dto.ProjectDto
+import com.proponenttech.callpulse.core.network.dto.SchoolDto
 import com.proponenttech.callpulse.feature.capture.CaptureScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,10 +20,11 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class HomeUiState(
-    val projects: List<ProjectDto> = emptyList(),
-    val selectedProject: ProjectDto? = null,
-    val workdaySeconds: Int = 28800,
+    val schools: List<SchoolDto> = emptyList(),
+    val selectedSchool: SchoolDto? = null,
+    val failedCount: Int = 0,
     val consentAccepted: Boolean = false,
+    val callLogGranted: Boolean = false,
     val calls: List<CallSessionEntity> = emptyList(),
     val unreviewedCount: Int = 0,
 )
@@ -40,35 +41,48 @@ class HomeViewModel @Inject constructor(
 
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning
+    private val callLogGranted = MutableStateFlow(permissions.callLog)
 
     val state: StateFlow<HomeUiState> = combine(
-        session.cachedProjects,
-        session.defaultProjectId,
-        preferences.workdaySeconds,
+        session.cachedSchools,
+        session.selectedSchoolId,
+        dao.observeFailedCount(),
         preferences.consentAcceptedAt,
         dao.observeRecent(),
-    ) { projects, defaultId, workday, consentAcceptedAt, calls ->
+    ) { schools, defaultId, failedCount, consentAcceptedAt, calls ->
         HomeUiState(
-            projects = projects,
-            selectedProject = projects.firstOrNull { it.id == defaultId },
-            workdaySeconds = workday,
+            schools = schools,
+            selectedSchool = schools.firstOrNull { it.id == defaultId },
+            failedCount = failedCount,
             consentAccepted = consentAcceptedAt != null,
             calls = calls,
             unreviewedCount = calls.count { it.reviewedAtMillis == null },
         )
-    }.stateIn(
+    }.combine(callLogGranted) { state, granted -> state.copy(callLogGranted = granted) }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = HomeUiState(),
     )
 
-    val canCapture: Boolean get() = permissions.canCapture
+    val canCapture: Boolean get() = state.value.callLogGranted && state.value.consentAccepted && state.value.selectedSchool != null
 
     /** §13.1 — a scan also runs when the app comes to the foreground. */
     fun onResume() {
-        if (permissions.canCapture) {
-            captureScheduler.ensurePeriodicReconcile()
-            captureScheduler.scanNow()
+        callLogGranted.value = permissions.callLog
+        viewModelScope.launch {
+            when (session.refreshIfExpiring()) {
+                com.proponenttech.callpulse.core.network.ApiResult.Unauthenticated,
+                com.proponenttech.callpulse.core.network.ApiResult.DeviceRevoked -> return@launch
+                else -> Unit
+            }
+            session.bootstrap()
+            if (session.isLoggedIn) {
+                captureScheduler.ensurePeriodicReconcile()
+                captureScheduler.scanNow()
+                syncScheduler.ensurePeriodicSync()
+                syncScheduler.ensurePeriodicHeartbeat()
+                syncScheduler.syncNow()
+            }
         }
 
         /*
@@ -79,9 +93,13 @@ class HomeViewModel @Inject constructor(
          * syncNow() below as the only surviving upload path, which is why data appeared only
          * when someone opened the app. KEEP means re-arming an existing schedule is a no-op.
          */
-        syncScheduler.ensurePeriodicSync()
-        syncScheduler.ensurePeriodicHeartbeat()
-        syncScheduler.syncNow()
+    }
+
+    fun retryFailed() {
+        viewModelScope.launch {
+            dao.retryFailed()
+            syncScheduler.syncNow()
+        }
     }
 
     fun scanNow() {
@@ -94,8 +112,8 @@ class HomeViewModel @Inject constructor(
     }
 
     /** §11.4 — affects future calls only; historical drafts are never rewritten. */
-    fun selectProject(projectId: Long) {
-        viewModelScope.launch { session.setDefaultProject(projectId) }
+    fun selectSchool(schoolId: String) {
+        viewModelScope.launch { session.setSchool(schoolId) }
     }
 
     fun signOut(onDone: () -> Unit) {

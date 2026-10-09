@@ -43,10 +43,10 @@ class SecureStore @Inject constructor(
             if (value == null) remove(KEY_TOKEN_EXPIRES_AT) else putString(KEY_TOKEN_EXPIRES_AT, value)
         }.apply()
 
-    var userId: Long?
-        get() = prefs.getLong(KEY_USER_ID, -1L).takeIf { it > 0 }
+    var userId: String?
+        get() = prefs.getString(KEY_USER_ID, null)
         set(value) = prefs.edit().apply {
-            if (value == null) remove(KEY_USER_ID) else putLong(KEY_USER_ID, value)
+            if (value == null) remove(KEY_USER_ID) else putString(KEY_USER_ID, value)
         }.apply()
 
     /**
@@ -78,16 +78,11 @@ class SecureStore @Inject constructor(
             .apply()
     }
 
-    /** §11.2 — 403 device_revoked. Everything goes, including the passphrase. */
-    fun wipeEverything() {
-        prefs.edit().clear().apply()
-    }
-
     private companion object {
         const val FILE_NAME = "callpulse_secure"
         const val KEY_TOKEN = "token"
         const val KEY_TOKEN_EXPIRES_AT = "token_expires_at"
-        const val KEY_USER_ID = "user_id"
+        const val KEY_USER_ID = "user_uuid"
         const val KEY_DEVICE_UUID = "device_uuid"
         const val KEY_DB_PASSPHRASE = "db_passphrase"
     }

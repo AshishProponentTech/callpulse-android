@@ -28,10 +28,10 @@ class ReviewNotifier @Inject constructor(
     fun ensureChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Call review",
+            "Captured calls",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Prompts to assign a project to a call you just had."
+            description = "Confirms calls captured for YogatribexCRM."
             setShowBadge(true)
         }
 
@@ -51,17 +51,8 @@ class ReviewNotifier @Inject constructor(
 
         ensureChannel()
 
-        val title = if (totalUnreviewed > 1) {
-            "$totalUnreviewed calls need review"
-        } else {
-            "Call needs review"
-        }
-
-        val text = if (totalUnreviewed > 1) {
-            "Tap to assign projects"
-        } else {
-            latestLabel?.let { "$it — tap to assign a project" } ?: "Tap to assign a project"
-        }
+        val title = "New call captured"
+        val text = "New call captured — uploads to YogatribexCRM automatically"
 
         val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

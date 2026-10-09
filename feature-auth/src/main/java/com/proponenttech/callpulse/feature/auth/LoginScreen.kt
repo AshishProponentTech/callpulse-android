@@ -13,6 +13,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -30,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,6 +69,7 @@ fun LoginScreen(
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var passwordVisible by remember { mutableStateOf(false) }
     Scaffold(modifier = modifier.fillMaxSize()) { padding ->
         Column(
             modifier = Modifier
@@ -73,7 +80,13 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("CallPulse", style = MaterialTheme.typography.headlineMedium)
+            Text("YogaTribeX CallPulse", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                state.versionLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
             Text(
                 text = "Sign in with your work account",
                 style = MaterialTheme.typography.bodyMedium,
@@ -99,7 +112,15 @@ fun LoginScreen(
                 label = { Text("Password") },
                 singleLine = true,
                 enabled = !state.isSubmitting,
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        )
+                    }
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done,
@@ -110,7 +131,7 @@ fun LoginScreen(
             )
 
             // Appendix B — the specific reason, never a generic failure message.
-            state.error?.let { error ->
+            (state.error ?: state.sessionReason)?.let { error ->
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.error,
@@ -185,7 +206,7 @@ fun LoginScreen(
                     onValueChange = { serverField = it },
                     label = { Text("Server address") },
                     singleLine = true,
-                    supportingText = { Text("e.g. 192.168.1.45:8000 — tap Apply after editing") },
+                    supportingText = { Text("e.g. 127.0.0.1:8123 — tap Apply after editing") },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Uri,
                         imeAction = ImeAction.Done,

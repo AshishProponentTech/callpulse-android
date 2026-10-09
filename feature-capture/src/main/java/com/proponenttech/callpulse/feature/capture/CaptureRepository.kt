@@ -5,6 +5,9 @@ import com.proponenttech.callpulse.core.data.db.CallSessionEntity
 import com.proponenttech.callpulse.core.data.db.SyncStatus
 import com.proponenttech.callpulse.core.data.session.AppPreferences
 import com.proponenttech.callpulse.core.data.session.SecureStore
+import com.proponenttech.callpulse.core.data.session.SchoolStore
+import com.proponenttech.callpulse.core.data.db.PersonalNumberDao
+import com.proponenttech.callpulse.core.data.sync.CallSessionMapper
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -26,6 +29,8 @@ class CaptureRepository @Inject constructor(
     private val dao: CallSessionDao,
     private val preferences: AppPreferences,
     private val secureStore: SecureStore,
+    private val schoolStore: SchoolStore,
+    private val personalNumbers: PersonalNumberDao,
 ) {
 
     private val scanMutex = Mutex()
@@ -52,6 +57,10 @@ class CaptureRepository @Inject constructor(
         scanMutex.withLock { scanLocked(nowMillis) }
 
     private suspend fun scanLocked(nowMillis: Long): ScanResult {
+        if (secureStore.token == null || preferences.consentAcceptedAt.first() == null ||
+            schoolStore.schoolId.value == null || !reader.hasPermission()) {
+            return ScanResult(0, 0, null)
+        }
         val stored = preferences.callLogWatermark.first()
         val watermark = if (stored == 0L) {
             val backfillFrom = nowMillis - BACKFILL_WINDOW_MILLIS
@@ -68,7 +77,7 @@ class CaptureRepository @Inject constructor(
             return ScanResult(created = 0, skipped = 0, newestStartedAtMillis = null)
         }
 
-        val defaultProjectId = preferences.defaultProjectId.first()
+        val schoolId = schoolStore.schoolId.value
         var created = 0
         var skipped = 0
         var newest: Long? = null
@@ -86,7 +95,11 @@ class CaptureRepository @Inject constructor(
                 continue
             }
 
-            val entity = toEntity(row, defaultProjectId, nowMillis)
+            var entity = toEntity(row, schoolId, nowMillis)
+            val personal = entity.phoneE164?.let { personalNumbers.contains(it) } ?: false
+            CallSessionMapper.skipReason(entity, personal)?.let { reason ->
+                entity = entity.copy(syncStatus = SyncStatus.SKIPPED, syncError = reason)
+            }
             val id = dao.insert(entity)
 
             if (id > 0) created++ else skipped++
@@ -120,7 +133,7 @@ class CaptureRepository @Inject constructor(
 
     private fun toEntity(
         row: CallLogRow,
-        defaultProjectId: Long?,
+        schoolId: String?,
         nowMillis: Long,
     ): CallSessionEntity {
         val mapped = CallLogMapper.mapType(row.type, row.durationSec)
@@ -135,7 +148,7 @@ class CaptureRepository @Inject constructor(
         return CallSessionEntity(
             // Generated ONCE here and never again (§13.3).
             clientUuid = UUID.randomUUID().toString(),
-            projectId = defaultProjectId,
+            schoolId = schoolId,
             phoneE164 = e164,
             // Keep whatever the dialer showed even when it cannot be normalised.
             phoneDisplay = row.number,

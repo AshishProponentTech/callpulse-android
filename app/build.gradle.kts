@@ -19,7 +19,7 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.proponenttech.callpulse"
+        applicationId = "com.yogatribex.crm"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
 
@@ -27,8 +27,8 @@ android {
         // 2 = the first build that talks to the live server at proponenttech.in, and the first
         // signed with the real release key. versionCode 1 was debug-signed and pointed at a host
         // that never served this API; it was never distributed.
-        versionCode = 3
-        versionName = "1.0.1"
+        versionCode = 5
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -83,24 +83,22 @@ android {
              *
              * A real phone cannot resolve 10.0.2.2; it needs the host's LAN address instead.
              * Override without editing this file:
-             *     ./gradlew assembleStagingDebug -PcallpulseApiBase=http://192.168.1.20:8000/api/v1/
+             *     ./gradlew assembleStagingDebug -PcallpulseApiBase=http://192.168.1.20:8123/api/v1/
              *
              * See DEVIATIONS.md D-005 - staging is the only flavor permitted cleartext HTTP,
              * and network_security_config restricts even that to these specific hosts.
              */
             val apiBase = providers.gradleProperty("callpulseApiBase")
-                .getOrElse("http://10.0.2.2:8000/api/v1/")
+                .getOrElse("http://10.0.2.2:8123/api/v1/")
             buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
         }
         create("production") {
             dimension = "env"
 
             /*
-             * The live ERP at proponenttech.in serves the CallPulse API and owns the projects
-             * and employee accounts the app authenticates against. There is no separate
-             * call-tracking backend: routes/api.php in proponent-admin is the server.
+             * YogatribexCRM's live API; staging uses the local development server.
              */
-            buildConfigField("String", "API_BASE_URL", "\"https://proponenttech.in/api/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://api.yogatribex.com/api/v1/\"")
         }
     }
 

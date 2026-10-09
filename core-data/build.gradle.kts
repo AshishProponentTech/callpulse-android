@@ -11,11 +11,18 @@ android {
 
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.androidTest?.sources?.assets?.addStaticSourceDirectory("schemas")
     }
 }
 
@@ -54,4 +61,7 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
 
     testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.room.testing)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.junit)
 }

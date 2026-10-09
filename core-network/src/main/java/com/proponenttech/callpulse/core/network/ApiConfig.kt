@@ -20,6 +20,15 @@ interface TokenProvider {
     fun currentToken(): String?
 }
 
+interface SchoolProvider {
+    fun currentSchoolId(): String?
+}
+
+interface SessionListener {
+    fun onUnauthenticated(sentToken: String?)
+    fun onDeviceRevoked()
+}
+
 /**
  * Debug-only base URL override. Retrofit fixes its baseUrl at construction, so an interceptor
  * rewrites the scheme/host/port per request when this returns non-null. Returns null in release

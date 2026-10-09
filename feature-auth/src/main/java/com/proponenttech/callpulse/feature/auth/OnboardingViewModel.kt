@@ -6,7 +6,7 @@ import com.proponenttech.callpulse.core.data.device.DeviceRepository
 import com.proponenttech.callpulse.core.data.device.PermissionState
 import com.proponenttech.callpulse.core.data.session.AppPreferences
 import com.proponenttech.callpulse.core.data.session.SessionRepository
-import com.proponenttech.callpulse.core.network.dto.ProjectDto
+import com.proponenttech.callpulse.core.network.dto.SchoolDto
 import com.proponenttech.callpulse.core.data.sync.SyncScheduler
 import com.proponenttech.callpulse.core.network.ApiResult
 import com.proponenttech.callpulse.feature.capture.CaptureScheduler
@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -25,23 +26,24 @@ data class OnboardingUiState(
     val consentChecked: Boolean = false,
     val isSubmittingConsent: Boolean = false,
     val consentError: String? = null,
-    val consentVersion: String = "1.0",
+    val consentVersion: String? = null,
+    val policyUrl: String? = null,
     val callLogGranted: Boolean = false,
     val phoneStateGranted: Boolean = false,
     val notificationsGranted: Boolean = false,
     val contactsGranted: Boolean = false,
     val batteryOptimizationIgnored: Boolean = false,
-    val projects: List<ProjectDto> = emptyList(),
-    val selectedProjectId: Long? = null,
+    val schools: List<SchoolDto> = emptyList(),
+    val selectedSchoolId: String? = null,
 ) {
     /**
      * Capture runs hands-off, so all three have to be true before it starts: consent recorded
-     * (decision #14), the call log permission (§12), and a project for captured calls to land on
-     * (rule 7 - no call may exist without one). Leaving the project unset would capture calls
+     * (decision #14), the call log permission (§12), and a school for captured calls to land on
+     * (rule 7 - no call may exist without one). Leaving the school unset would capture calls
      * that can never sync.
      */
     val captureReady: Boolean
-        get() = consentAccepted && callLogGranted && selectedProjectId != null
+        get() = consentAccepted && callLogGranted && selectedSchoolId != null
 }
 
 @HiltViewModel
@@ -59,30 +61,34 @@ class OnboardingViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val acceptedAt = preferences.consentAcceptedAt.first()
-            val version = preferences.consentVersion.first() ?: "1.0"
-            _state.update {
-                it.copy(consentAccepted = acceptedAt != null, consentVersion = version)
-            }
-            refreshPermissions()
-        }
-
-        viewModelScope.launch {
-            session.cachedProjects.collect { projects ->
-                _state.update { it.copy(projects = projects) }
+            combine(preferences.consentAcceptedAt, preferences.consentVersion, preferences.policyUrl) {
+                acceptedAt, version, policy -> Triple(acceptedAt, version, policy)
+            }.collect { (acceptedAt, version, policy) ->
+                _state.update {
+                    it.copy(consentAccepted = acceptedAt != null, consentVersion = version, policyUrl = policy)
+                }
+                refreshPermissions()
             }
         }
 
+        viewModelScope.launch { session.bootstrap() }
+
         viewModelScope.launch {
-            session.defaultProjectId.collect { id ->
-                _state.update { it.copy(selectedProjectId = id) }
+            session.cachedSchools.collect { schools ->
+                _state.update { it.copy(schools = schools) }
+            }
+        }
+
+        viewModelScope.launch {
+            session.selectedSchoolId.collect { id ->
+                _state.update { it.copy(selectedSchoolId = id) }
                 if (_state.value.captureReady) startCapture()
             }
         }
     }
 
-    fun selectProject(projectId: Long) {
-        viewModelScope.launch { session.setDefaultProject(projectId) }
+    fun selectSchool(schoolId: String) {
+        viewModelScope.launch { session.setSchool(schoolId) }
     }
 
     /** Called whenever the screen resumes — permissions can change outside the app. */
@@ -112,11 +118,12 @@ class OnboardingViewModel @Inject constructor(
     fun acceptConsent() {
         val current = _state.value
         if (!current.consentChecked || current.isSubmittingConsent) return
+        val version = current.consentVersion ?: return
 
         _state.update { it.copy(isSubmittingConsent = true, consentError = null) }
 
         viewModelScope.launch {
-            when (val result = deviceRepository.recordConsent(current.consentVersion)) {
+            when (val result = deviceRepository.recordConsent(version)) {
                 is ApiResult.Success -> {
                     _state.update {
                         it.copy(isSubmittingConsent = false, consentAccepted = true)
