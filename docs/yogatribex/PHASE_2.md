@@ -89,3 +89,20 @@ were left alone. Updating the external plan's Haal section requires owner approv
 
 On this laptop the build completed with `--no-parallel --max-workers=2` and
 `'-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'` to reduce RAM pressure.
+
+## UI refresh, build 6
+
+The owner's requested `#4a5df9` palette now drives the app theme instead of the
+phone's wallpaper colors. Login, Home and setup share a light blue gradient
+backdrop, rounded cards and a matching dark palette. Home uses a single scrolling
+list so its header and call rows remain accessible on short screens. Long school
+and contact names can wrap; permission labels and status badges stack. Login
+scrolls with the keyboard and keeps Developer settings behind an expandable row.
+
+Version `1.0.3-staging` / build 6 assembled and installed successfully on the
+Redmi. Home and setup were visually checked at the native 360 dp width. A temporary
+320 dp / 640 dp viewport check confirmed Home actions fit and the setup completion
+button can be reached by scrolling. The native display size was restored.
+Existing Uploaded calls remained visible. Login and dark mode compiled but were
+not visually checked on the phone; the owner's signed-in session was preserved.
+This UI-only follow-up did not rerun the Phase 2 unit/instrumentation suite.

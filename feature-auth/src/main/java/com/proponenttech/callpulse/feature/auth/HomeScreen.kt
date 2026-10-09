@@ -1,51 +1,35 @@
 package com.proponenttech.callpulse.feature.auth
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.foundation.layout.Box
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.proponenttech.callpulse.core.data.db.CallSessionEntity
 import com.proponenttech.callpulse.core.data.db.SyncStatus
+import com.proponenttech.callpulse.core.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @Composable
-fun HomeRoute(
-    onSignOut: () -> Unit,
-    onOpenOnboarding: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel(),
-) {
+fun HomeRoute(onSignOut: () -> Unit, onOpenOnboarding: () -> Unit, viewModel: HomeViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -55,139 +39,129 @@ fun HomeRoute(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-
-    Scaffold { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // §11.4 — "Working on: {School}" on every screen; tap to change.
-                Box {
-                    var pickerOpen by remember { mutableStateOf(false) }
-
-                    AssistChip(
-                        onClick = { pickerOpen = true },
-                        label = {
-                            Text(
-                                state.selectedSchool?.name?.let { "Working on: $it" }
-                                    ?: "Choose a school",
-                            )
-                        },
-                    )
-
-                    DropdownMenu(
-                        expanded = pickerOpen,
-                        onDismissRequest = { pickerOpen = false },
-                    ) {
-                        if (state.schools.isEmpty()) {
-                            DropdownMenuItem(
-                                text = { Text("No schools available") },
-                                onClick = { pickerOpen = false },
-                            )
+    BrandBackground(Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            bottomBar = {
+                Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)) {
+                    Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = onOpenOnboarding) {
+                            Icon(Icons.Outlined.Settings, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Setup")
                         }
-                        state.schools.forEach { school ->
-                            DropdownMenuItem(
-                                text = { Text(school.name) },
-                                onClick = {
-                                    viewModel.selectSchool(school.id)
-                                    pickerOpen = false
-                                },
-                            )
-                        }
+                        TextButton(onClick = { viewModel.signOut(onSignOut) }) { Text("Sign out") }
                     }
                 }
-                TextButton(onClick = viewModel::scanNow) { Text("Scan now") }
-            }
-
-            /*
-             * §12.1 — a persistent banner while a required permission is missing or consent has
-             * not been recorded. Capture silently doing nothing is the worst possible failure
-             * mode: the employee believes they are being tracked and the manager sees no data.
-             */
-            if (!viewModel.canCapture) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                        .clickable { onOpenOnboarding() },
+            },
+        ) { insets ->
+            Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.TopCenter) {
+                LazyColumn(
+                    modifier = Modifier.widthIn(max = 720.dp).fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(
-                            text = "Call capture is off",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                        Text(
-                            text = if (!state.consentAccepted) {
-                                "Consent has not been recorded. Tap to finish setup."
-                            } else if (state.selectedSchool == null) {
-                                "Choose a school to start capture."
-                            } else {
-                                "The call log permission is not granted. Tap to fix."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            BrandMark()
+                            Column(Modifier.weight(1f)) {
+                                Text("YogaTribeX", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                Text("CallPulse", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                     }
+                    item {
+                        Column(
+                            Modifier.fillMaxWidth().background(
+                                Brush.linearGradient(listOf(Color(0xFF4A5DF9), Color(0xFF4152D3))),
+                                RoundedCornerShape(24.dp),
+                            ).padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text("Your calls, connected.", color = Color.White,
+                                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                            Text(if (viewModel.canCapture) "Calls upload to your school’s CRM automatically."
+                                else "Finish setup to start capturing calls.",
+                                color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                            SchoolPicker(state, viewModel::selectSchool)
+                        }
+                    }
+                    if (!viewModel.canCapture) {
+                        item {
+                            Card(onClick = onOpenOnboarding,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text("Call capture is off", style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer)
+                                    Text(if (!state.consentAccepted) "Consent has not been recorded. Tap to finish setup."
+                                        else if (state.selectedSchool == null) "Choose a school to start capture."
+                                        else "The call log permission is not granted. Tap to fix.",
+                                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Captured calls", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                                Text("${state.calls.size} recent calls", style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            TextButton(onClick = viewModel::scanNow) {
+                                Icon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Scan now")
+                            }
+                        }
+                    }
+                    if (state.failedCount > 0) {
+                        item { OutlinedButton(onClick = viewModel::retryFailed, modifier = Modifier.fillMaxWidth()) {
+                            Text("Retry failed uploads (${state.failedCount})")
+                        } }
+                    }
+                    if (state.calls.isEmpty()) {
+                        item {
+                            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                                Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Icon(Icons.Outlined.PhoneInTalk, null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Text("Ready for your first call", style = MaterialTheme.typography.titleMedium)
+                                    Text(if (viewModel.canCapture) "Make or receive a call, then tap Scan now."
+                                        else "Complete setup to see your calls here.",
+                                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                    items(state.calls, key = { it.id }) { CallRow(it) }
                 }
             }
+        }
+    }
+}
 
-            Text(
-                text = "Captured calls",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-            Text(
-                text = "${state.calls.size} captured",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            if (state.calls.isEmpty()) {
-                // Empty states that say something useful (§7.2).
-                Text(
-                    text = if (viewModel.canCapture) {
-                        "No calls captured yet. Make or receive a call, then pull Scan now."
-                    } else {
-                        "No calls captured — capture is not running yet."
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 24.dp),
-                )
+@Composable
+private fun SchoolPicker(state: HomeUiState, onSelect: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Surface(onClick = { expanded = true }, shape = RoundedCornerShape(14.dp),
+            color = Color.White, contentColor = Color(0xFF202C78)) {
+            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Outlined.School, null, Modifier.size(22.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Working on", style = MaterialTheme.typography.labelSmall)
+                    Text(state.selectedSchool?.name ?: "Choose a school", style = MaterialTheme.typography.titleSmall)
+                }
+                Icon(Icons.Outlined.ExpandMore, "Change school")
             }
-
-            if (state.failedCount > 0) {
-                TextButton(onClick = viewModel::retryFailed) { Text("Retry failed uploads") }
-            }
-
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(state.calls, key = { it.id }) { call -> CallRow(call) }
-            }
-
-            HorizontalDivider()
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                TextButton(onClick = onOpenOnboarding) { Text("Setup") }
-                TextButton(onClick = { viewModel.signOut(onSignOut) }) { Text("Sign out") }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (state.schools.isEmpty()) DropdownMenuItem(text = { Text("No schools available") }, onClick = { expanded = false })
+            state.schools.forEach { school ->
+                DropdownMenuItem(text = { Text(school.name) }, onClick = { onSelect(school.id); expanded = false })
             }
         }
     }
@@ -195,59 +169,46 @@ fun HomeRoute(
 
 @Composable
 private fun CallRow(call: CallSessionEntity) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    // Elvis only falls through on null, so a blank string would render an empty
-                    // row - which is exactly what a withheld number produces (§13.4).
-                    text = listOfNotNull(call.leadName, call.contactName, call.phoneE164, call.phoneDisplay)
-                        .firstOrNull { it.isNotBlank() }
-                        ?: "Private number",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                    text = formatDuration(call.durationSec),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+                    Icon(when (call.direction) {
+                        "inbound" -> Icons.Outlined.CallReceived
+                        "outbound" -> Icons.Outlined.CallMade
+                        else -> Icons.Outlined.CallMissed
+                    }, null, Modifier.padding(12.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(listOfNotNull(call.leadName, call.contactName, call.phoneE164, call.phoneDisplay)
+                        .firstOrNull { it.isNotBlank() } ?: "Private number",
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("${call.direction.replaceFirstChar { it.titlecase() }} · ${formatTime(call.startedAtMillis)}",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-
-            Text(
-                text = "${call.direction} · ${formatTime(call.startedAtMillis)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            // §15 — a rejected row must be visible, with the reason, not silently stuck.
-            val syncLabel = when (call.syncStatus) {
+            Text(formatDuration(call.durationSec), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val label = when (call.syncStatus) {
                 SyncStatus.SYNCED -> "Uploaded"
                 SyncStatus.SKIPPED -> call.syncError ?: "Upload skipped"
                 SyncStatus.FAILED -> call.syncError ?: "Rejected by the server"
                 else -> if (call.schoolId == null) "Choose a school" else "Waiting to upload"
             }
-
-            Text(
-                text = syncLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (call.syncStatus == SyncStatus.FAILED) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
+            StatusPill(label, warning = call.syncStatus == SyncStatus.FAILED)
             call.leadStatus?.let { Text("Lead status: $it", style = MaterialTheme.typography.bodySmall) }
         }
     }
 }
 
 private fun formatDuration(seconds: Int): String = when {
-    seconds <= 0 -> "no answer"
+    seconds <= 0 -> "No answer"
     seconds < 60 -> "${seconds}s"
     else -> "${seconds / 60}m ${seconds % 60}s"
 }
 
-private fun formatTime(millis: Long): String =
-    SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()).format(Date(millis))
+private fun formatTime(millis: Long): String = SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()).format(Date(millis))

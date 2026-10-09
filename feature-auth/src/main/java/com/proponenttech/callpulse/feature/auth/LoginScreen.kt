@@ -1,63 +1,31 @@
 package com.proponenttech.callpulse.feature.auth
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.proponenttech.callpulse.core.ui.theme.*
 
 @Composable
-fun LoginRoute(
-    onSignedIn: () -> Unit,
-    viewModel: LoginViewModel = hiltViewModel(),
-) {
+fun LoginRoute(onSignedIn: () -> Unit, viewModel: LoginViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-
-    LaunchedEffect(state.signedIn) {
-        if (state.signedIn) onSignedIn()
-    }
-
-    LoginScreen(
-        state = state,
-        onEmailChange = viewModel::onEmailChange,
-        onPasswordChange = viewModel::onPasswordChange,
-        onServerUrlChange = viewModel::onServerUrlChange,
-        onSubmit = viewModel::submit,
-    )
+    LaunchedEffect(state.signedIn) { if (state.signedIn) onSignedIn() }
+    LoginScreen(state, viewModel::onEmailChange, viewModel::onPasswordChange,
+        viewModel::onServerUrlChange, viewModel::submit)
 }
 
 @Composable
@@ -70,154 +38,115 @@ fun LoginScreen(
     modifier: Modifier = Modifier,
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
-    Scaffold(modifier = modifier.fillMaxSize()) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text("YogaTribeX CallPulse", style = MaterialTheme.typography.headlineMedium)
-            Text(
-                state.versionLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Text(
-                text = "Sign in with your work account",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp, bottom = 32.dp),
-            )
-
-            OutlinedTextField(
-                value = state.email,
-                onValueChange = onEmailChange,
-                label = { Text("Email") },
-                singleLine = true,
-                enabled = !state.isSubmitting,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            OutlinedTextField(
-                value = state.password,
-                onValueChange = onPasswordChange,
-                label = { Text("Password") },
-                singleLine = true,
-                enabled = !state.isSubmitting,
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-            )
-
-            // Appendix B — the specific reason, never a generic failure message.
-            (state.error ?: state.sessionReason)?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                )
-            }
-
-            Button(
-                onClick = onSubmit,
-                enabled = state.canSubmit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 24.dp),
-            ) {
-                if (state.isSubmitting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(state.progressLabel ?: "Working…")
-                } else {
-                    Text("Sign in")
-                }
-            }
-
-            /*
-             * An unreachable host does not fail fast — a firewall that DROPS packets gives no
-             * RST, so OkHttp waits out the full connect timeout. Without this line the screen
-             * looks frozen for 20 seconds and the user has no idea whether anything is
-             * happening, which is exactly the report that prompted it.
-             */
-            if (state.isSubmitting) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                )
-                state.serverUrl?.let { url ->
-                    Text(
-                        text = "Contacting $url",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
-            }
-
-            /*
-             * Debug builds only. The staging server sits on a development machine whose LAN
-             * address is handed out by DHCP and has already moved twice; pinning it at build
-             * time made every reassignment cost a rebuild and a reinstall. Editing it here fixes
-             * that on the device. Release builds never show this and cannot be repointed.
-             */
-            if (!state.isSubmitting && state.serverUrl != null) {
-                var serverField by remember(state.serverUrl) { mutableStateOf(state.serverUrl) }
-
-                Text(
-                    text = "Developer settings",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 32.dp, bottom = 4.dp),
-                )
-                OutlinedTextField(
-                    value = serverField,
-                    onValueChange = { serverField = it },
-                    label = { Text("Server address") },
-                    singleLine = true,
-                    supportingText = { Text("e.g. 127.0.0.1:8123 — tap Apply after editing") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Uri,
-                        imeAction = ImeAction.Done,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                TextButton(
-                    onClick = { onServerUrlChange(serverField) },
-                    modifier = Modifier.align(Alignment.End),
+    var developerExpanded by remember { mutableStateOf(false) }
+    BrandBackground(modifier.fillMaxSize()) {
+        Scaffold(containerColor = Color.Transparent) { insets ->
+            BoxWithConstraints(Modifier.fillMaxSize().padding(insets).imePadding()) {
+                val gutter = if (maxWidth < 360.dp) 16.dp else 24.dp
+                val headerSpace = if (maxHeight > 720.dp) 24.dp else 0.dp
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                        .padding(horizontal = gutter, vertical = 28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
-                    Text("Apply server address")
+                    Spacer(Modifier.height(headerSpace))
+                    BrandMark()
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("YogaTribeX", style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold)
+                        Text("CallPulse", style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary)
+                        Text("Every conversation, connected.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp))
+                    }
+                    Card(
+                        modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    ) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Column {
+                                Text("Welcome back", style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.SemiBold)
+                                Text("Sign in with your CRM work account",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp))
+                            }
+                            OutlinedTextField(
+                                value = state.email, onValueChange = onEmailChange,
+                                label = { Text("Email address") }, singleLine = true,
+                                enabled = !state.isSubmitting,
+                                leadingIcon = { Icon(Icons.Outlined.MailOutline, contentDescription = null) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            OutlinedTextField(
+                                value = state.password, onValueChange = onPasswordChange,
+                                label = { Text("Password") }, singleLine = true,
+                                enabled = !state.isSubmitting,
+                                leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
+                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                        Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                            contentDescription = if (passwordVisible) "Hide password" else "Show password")
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { if (state.canSubmit) onSubmit() }),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            (state.error ?: state.sessionReason)?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium)
+                            }
+                            Button(onClick = onSubmit, enabled = state.canSubmit,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                                if (state.isSubmitting) {
+                                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary)
+                                    Spacer(Modifier.width(12.dp))
+                                }
+                                Text(if (state.isSubmitting) state.progressLabel ?: "Working…" else "Sign in",
+                                    style = MaterialTheme.typography.titleSmall)
+                            }
+                            if (state.isSubmitting) {
+                                LinearProgressIndicator(Modifier.fillMaxWidth())
+                                state.serverUrl?.let {
+                                    Text("Contacting $it", style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                    StatusPill(state.versionLabel)
+                    if (!state.isSubmitting && state.serverUrl != null) {
+                        Column(Modifier.widthIn(max = 480.dp).fillMaxWidth()) {
+                            TextButton(onClick = { developerExpanded = !developerExpanded },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                                Icon(Icons.Outlined.Settings, null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Developer settings")
+                                Icon(if (developerExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
+                            }
+                            if (developerExpanded) {
+                                var serverField by remember(state.serverUrl) { mutableStateOf(state.serverUrl) }
+                                OutlinedTextField(value = serverField, onValueChange = { serverField = it },
+                                    label = { Text("Server address") }, singleLine = true,
+                                    supportingText = { Text("e.g. 127.0.0.1:8123 — tap Apply after editing") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+                                    modifier = Modifier.fillMaxWidth())
+                                TextButton(onClick = { onServerUrlChange(serverField) }, modifier = Modifier.align(Alignment.End)) {
+                                    Text("Apply server address")
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
